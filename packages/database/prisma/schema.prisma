@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model GuildConfig {
+  id             String          @id // Discord Guild ID
+  name           String          @default("Serveur Discord")
+  icon           String?
+  prefix         String          @default("!")
+  language       String          @default("fr")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  welcomeConfig  WelcomeConfig?
+  modConfig      ModConfig?
+  logConfig      LogConfig?
+  ticketConfig   TicketConfig?
+  levelConfig    LevelConfig?
+  sanctions      Sanction[]
+  tickets        Ticket[]
+  userLevels     UserLevel[]
+  reactionRoles  ReactionRole[]
+}
+
+model WelcomeConfig {
+  id             String       @id @default(cuid())
+  guildId        String       @unique
+  guild          GuildConfig  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  enabled        Boolean      @default(false)
+  channelId      String?
+  message        String       @default("Bienvenue {user} sur le serveur **{server}** ! Nous sommes maintenant {count} membres.")
+  useEmbed       Boolean      @default(true)
+  embedColor     String       @default("#F59E0B")
+  embedTitle     String       @default("Nouveau membre !")
+  autoRoleId     String?
+  
+  leaveEnabled   Boolean      @default(false)
+  leaveChannelId String?
+  leaveMessage   String       @default("Au revoir {user}... Nous espérons te revoir bientôt !")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model ModConfig {
+  id               String       @id @default(cuid())
+  guildId          String       @unique
+  guild            GuildConfig  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  modRoleId        String?
+  adminRoleId      String?
+  muteRoleId       String?
+  logChannelId     String?
+  autoModAntiSpam  Boolean      @default(false)
+  autoModAntiLink  Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
+
+model Sanction {
+  id           String       @id @default(cuid())
+  guildId      String
+  guild        GuildConfig  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  userId       String
+  userTag      String?
+  moderatorId  String
+  moderatorTag String?
+  type         String       // WARN, MUTE, KICK, BAN
+  reason       String       @default("Aucune raison spécifiée")
+  duration     Int?         // Durée en secondes pour un mute/timeout
+  createdAt    DateTime     @default(now())
+}
+
+model LogConfig {
+  id                  String       @id @default(cuid())
+  guildId             String       @unique
+  guild               GuildConfig  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  enabled             Boolean      @default(false)
+  modLogChannelId     String?
+  messageLogChannelId String?
+  memberLogChannelId  String?
+  voiceLogChannelId   String?
+  roleLogChannelId    String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+}
+
+model TicketConfig {
+  id               String       @id @default(cuid())
+  guildId          String       @unique
+  guild            GuildConfig  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  enabled          Boolean      @default(false)
+  categoryId       String?
+  supportRoleId    String?
+  logChannelId     String?
+  panelChannelId   String?
+  panelMessageId   String?
+  panelTitle       String       @default("Assistance & Support")
+  panelDescription String       @default("Pour toute demande d'assistance, cliquez sur le bouton ci-dessous pour ouvrir un salon privé.")
+  buttonText       String       @default("📩 Ouvrir un ticket")
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
+
+model Ticket {
+  id           String       @id @default(cuid())
+  guildId      String
+  guild        GuildConfig  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  channelId    String       @unique
+  userId       String
+  userTag      String?
+  status       String       @default("OPEN") // OPEN, CLOSED
+  closedAt     DateTime?
+  closedBy     String?
+  createdAt    DateTime     @default(now())
+}
+
+model LevelConfig {
+  id                 String       @id @default(cuid())
+  guildId            String       @unique
+  guild              GuildConfig  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  enabled            Boolean      @default(true)
+  xpPerMessageMin    Int          @default(15)
+  xpPerMessageMax    Int          @default(25)
+  cooldownSeconds    Int          @default(60)
+  announceChannelId  String?      // Si null, dans le même salon
+  announceMessage    String       @default("Bravo {user} ! Tu as atteint le niveau **{level}** ! 🎉")
+  ignoredChannelIds  String       @default("[]") // JSON tableau
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+}
+
+model UserLevel {
+  id             String       @id @default(cuid())
+  guildId        String
+  guild          GuildConfig  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  userId         String
+  userTag        String?
+  avatarUrl      String?
+  xp             Int          @default(0)
+  level          Int          @default(0)
+  messagesCount  Int          @default(0)
+  lastXpAt       DateTime     @default(now())
+
+  @@unique([guildId, userId])
+}
+
+model ReactionRole {
+  id           String       @id @default(cuid())
+  guildId      String
+  guild        GuildConfig  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  channelId    String
+  messageId    String
+  roleId       String
+  roleName     String?
+  emoji        String?
+  label        String       @default("Obtenir le rôle")
+  style        String       @default("PRIMARY") // PRIMARY, SECONDARY, SUCCESS, DANGER
+  createdAt    DateTime     @default(now())
+}

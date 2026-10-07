@@ -1,0 +1,21 @@
+{
+  "name": "discord-bot-suite",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "postinstall": "pnpm --filter @bot/database generate",
+    "dev": "pnpm --filter @bot/core dev",
+    "dev:bot": "pnpm --filter @bot/core dev",
+    "dev:dashboard": "pnpm --filter @bot/dashboard dev",
+    "build:bot": "pnpm --filter @bot/core build",
+    "build:dashboard": "pnpm --filter @bot/dashboard build",
+    "build": "pnpm --recursive --if-present build",
+    "db:generate": "pnpm --filter @bot/database generate",
+    "db:push": "pnpm --filter @bot/database push",
+    "db:studio": "pnpm --filter @bot/database studio"
+  }
+}
