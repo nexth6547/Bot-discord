@@ -21,12 +21,25 @@ export async function onMessageCreate(message: Message) {
       if (!isStaff) {
         const linkRegex = /(https?:\/\/[^\s]+)|(discord\.(gg|io|me|li)\/[^\s]+)/gi;
         if (linkRegex.test(message.content)) {
-          await message.delete().catch(() => null);
+          try {
+            await message.delete();
+          } catch (error) {
+            console.error("[onMessageCreate] Impossible de supprimer un lien interdit:", error);
+            return;
+          }
           if (!message.channel.isSendable()) return;
-          const reply = await message.channel.send({
-            content: `⚠️ <@${message.author.id}>, les liens ne sont pas autorisés sur ce serveur.`,
-          });
-          setTimeout(() => reply.delete().catch(() => null), 4000);
+          try {
+            const reply = await message.channel.send({
+              content: `⚠️ <@${message.author.id}>, les liens ne sont pas autorisés sur ce serveur.`,
+            });
+            setTimeout(() => {
+              void reply.delete().catch((error: unknown) => {
+                console.error("[onMessageCreate] Impossible de supprimer l'avertissement:", error);
+              });
+            }, 4000);
+          } catch (error) {
+            console.error("[onMessageCreate] Impossible d'envoyer l'avertissement Auto-Mod:", error);
+          }
           return;
         }
       }

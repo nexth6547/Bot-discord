@@ -71,7 +71,7 @@ Bot Discord/
      ```
      http://localhost:3000/api/auth/callback/discord
      ```
-4. Invitez le bot sur votre serveur de test via le lien généré dans OAuth2 > URL Generator (scopes: `bot`, `applications.commands` et permissions: `Administrator`).
+4. Invitez le bot sur votre serveur de test avec les scopes `bot` et `applications.commands`. Accordez uniquement les permissions nécessaires : Voir les salons, Envoyer des messages, Lire l'historique des messages, Intégrer des liens, Gérer les salons, Gérer les rôles, Gérer les messages, Bannir des membres, Expulser des membres et Modérer les membres. N'accordez pas `Administrator`.
 
 ### 2. Configuration du fichier `.env`
 Ouvrez le fichier `.env` à la racine et renseignez vos identifiants :

@@ -39,15 +39,40 @@ export const reactionRoleSetupCommand: Command = {
     await interaction.deferReply({ ephemeral: true });
 
     const role = interaction.options.getRole("role", true);
-    const channel = interaction.options.getChannel("salon", true) as any;
+    const channelOption = interaction.options.getChannel("salon", true);
+    if (channelOption.type !== ChannelType.GuildText) {
+      await interaction.editReply({ content: "❌ Sélectionnez un salon textuel." });
+      return;
+    }
+    const channel = await interaction.guild.channels.fetch(channelOption.id);
+    if (!channel || channel.type !== ChannelType.GuildText) {
+      await interaction.editReply({ content: "❌ Ce salon textuel n'est plus disponible." });
+      return;
+    }
     const buttonText = interaction.options.getString("texte") || `Obtenir le rôle ${role.name}`;
     const emoji = interaction.options.getString("emoji") || "✨";
 
-    // Vérifier la hiérarchie des rôles
-    const botMember = await interaction.guild.members.fetch(client.user!.id);
-    if (role.position >= botMember.roles.highest.position) {
+    const [botMember, moderator] = await Promise.all([
+      interaction.guild.members.fetchMe(),
+      interaction.guild.members.fetch(interaction.user.id),
+    ]);
+    if (
+      role.id === interaction.guild.id ||
+      role.managed ||
+      role.position >= botMember.roles.highest.position
+    ) {
       await interaction.editReply({
-        content: `❌ Le rôle <@&${role.id}> est placé plus haut ou au même niveau que mon rôle le plus élevé. Veuillez réorganiser vos rôles.`,
+        content: `❌ Le rôle <@&${role.id}> ne peut pas être attribué par le bot. Vérifiez son type et sa position dans la hiérarchie.`,
+      });
+      return;
+    }
+    if (
+      moderator.id !== interaction.guild.ownerId &&
+      !moderator.permissions.has(PermissionFlagsBits.Administrator) &&
+      role.position >= moderator.roles.highest.position
+    ) {
+      await interaction.editReply({
+        content: "❌ Vous ne pouvez pas gérer un rôle de rang égal ou supérieur au vôtre.",
       });
       return;
     }

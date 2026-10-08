@@ -1,11 +1,33 @@
 import { NextResponse } from "next/server";
 import prisma from "@bot/database";
+import {
+  authorizeGuild,
+  ensureGuildConfig,
+  internalError,
+  invalidConfig,
+  readJsonObject,
+  validateGuildReferences,
+  validateConfig,
+} from "@/lib/guild-access";
+
+const fields = {
+  modRoleId: { type: "snowflake", nullable: true },
+  adminRoleId: { type: "snowflake", nullable: true },
+  muteRoleId: { type: "snowflake", nullable: true },
+  logChannelId: { type: "snowflake", nullable: true },
+  autoModAntiSpam: { type: "boolean" },
+  autoModAntiLink: { type: "boolean" },
+} as const;
 
 export async function GET(
   request: Request,
   { params }: { params: { guildId: string } }
 ) {
+  const access = await authorizeGuild(params.guildId);
+  if (!access.ok) return access.response;
+
   try {
+    await ensureGuildConfig(access.guild);
     const config = await prisma.modConfig.findUnique({
       where: { guildId: params.guildId },
     });
@@ -26,8 +48,8 @@ export async function GET(
       },
       sanctions,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return internalError(error, "Loading moderation settings");
   }
 }
 
@@ -35,20 +57,28 @@ export async function POST(
   request: Request,
   { params }: { params: { guildId: string } }
 ) {
+  const access = await authorizeGuild(params.guildId);
+  if (!access.ok) return access.response;
+
   try {
-    const body = await request.json();
+    await ensureGuildConfig(access.guild);
+    const body = await readJsonObject(request);
+    const data = body && validateConfig(body, fields);
+    if (!data) return invalidConfig();
+    const referenceError = await validateGuildReferences(params.guildId, data);
+    if (referenceError) return referenceError;
 
     const updated = await prisma.modConfig.upsert({
       where: { guildId: params.guildId },
       create: {
         guildId: params.guildId,
-        ...body,
+        ...data,
       },
-      update: body,
+      update: data,
     });
 
     return NextResponse.json(updated);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return internalError(error, "Saving moderation settings");
   }
 }

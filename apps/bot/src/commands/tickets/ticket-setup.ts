@@ -42,15 +42,30 @@ export const ticketSetupCommand: Command = {
 
     await interaction.deferReply({ ephemeral: true });
 
-    const targetChannel = interaction.options.getChannel("salon", true) as any;
+    const channelOption = interaction.options.getChannel("salon", true);
+    if (channelOption.type !== ChannelType.GuildText) {
+      await interaction.editReply({ content: "❌ Sélectionnez un salon textuel." });
+      return;
+    }
+    const targetChannel = await interaction.guild.channels.fetch(channelOption.id);
+    if (!targetChannel || targetChannel.type !== ChannelType.GuildText) {
+      await interaction.editReply({ content: "❌ Ce salon textuel n'est plus disponible." });
+      return;
+    }
     const supportRole = interaction.options.getRole("role_support");
     const category = interaction.options.getChannel("categorie");
 
     try {
+      const currentConfig = await prisma.ticketConfig.findUnique({
+        where: { guildId: interaction.guild.id },
+      });
+      const supportRoleId = supportRole?.id ?? currentConfig?.supportRoleId ?? null;
+      const categoryId = category?.id ?? currentConfig?.categoryId ?? null;
       const embed = new EmbedBuilder()
-        .setTitle("📩 Centre d'assistance & Support")
+        .setTitle(currentConfig?.panelTitle || "📩 Centre d'assistance & Support")
         .setDescription(
-          "Un problème ou une question ?\nCliquez sur le bouton ci-dessous pour ouvrir un salon de ticket privé avec l'équipe de modération."
+          currentConfig?.panelDescription ||
+            "Un problème ou une question ?\nCliquez sur le bouton ci-dessous pour ouvrir un salon de ticket privé avec l'équipe de modération."
         )
         .setColor(0x5865F2)
         .setFooter({ text: interaction.guild.name, iconURL: interaction.guild.iconURL() || undefined });
@@ -58,7 +73,7 @@ export const ticketSetupCommand: Command = {
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setCustomId("ticket_create")
-          .setLabel("Ouvrir un ticket")
+          .setLabel(currentConfig?.buttonText || "Ouvrir un ticket")
           .setEmoji("📩")
           .setStyle(ButtonStyle.Primary)
       );
@@ -76,15 +91,15 @@ export const ticketSetupCommand: Command = {
           enabled: true,
           panelChannelId: targetChannel.id,
           panelMessageId: panelMessage.id,
-          supportRoleId: supportRole?.id || null,
-          categoryId: category?.id || null,
+          supportRoleId,
+          categoryId,
         },
         update: {
           enabled: true,
           panelChannelId: targetChannel.id,
           panelMessageId: panelMessage.id,
-          supportRoleId: supportRole ? supportRole.id : undefined,
-          categoryId: category ? category.id : undefined,
+          supportRoleId,
+          categoryId,
         },
       });
 

@@ -6,6 +6,7 @@ import {
 } from "discord.js";
 import { Command, BotClient } from "../../client";
 import { LogService } from "../../services/logService";
+import { isTargetBelowModerator } from "../../services/moderationService";
 import prisma from "@bot/database";
 
 export const kickCommand: Command = {
@@ -36,6 +37,14 @@ export const kickCommand: Command = {
     if (!member) {
       await interaction.reply({
         content: "❌ Ce membre n'est pas présent sur le serveur.",
+        ephemeral: true,
+      });
+      return;
+    }
+
+    if (!(await isTargetBelowModerator(interaction, member))) {
+      await interaction.reply({
+        content: "❌ Vous ne pouvez pas expulser un membre de rang égal ou supérieur au vôtre.",
         ephemeral: true,
       });
       return;

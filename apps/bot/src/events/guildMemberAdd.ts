@@ -30,10 +30,13 @@ export async function onGuildMemberAdd(member: GuildMember) {
           .replace(/{count}/g, guild.memberCount.toString());
 
         if (welcomeConfig.useEmbed) {
+          const embedColor = /^#[\da-fA-F]{6}$/.test(welcomeConfig.embedColor)
+            ? Number.parseInt(welcomeConfig.embedColor.slice(1), 16)
+            : 0xF59E0B;
           const embed = new EmbedBuilder()
             .setTitle(welcomeConfig.embedTitle || "Bienvenue !")
             .setDescription(formattedMsg)
-            .setColor((welcomeConfig.embedColor as any) || 0x5865F2)
+            .setColor(embedColor)
             .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
             .setFooter({ text: `Nous sommes maintenant ${guild.memberCount} membres !` })
             .setTimestamp();

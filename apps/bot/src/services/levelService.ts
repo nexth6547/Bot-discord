@@ -44,11 +44,19 @@ export class LevelService {
       if (!config || !config.enabled) return;
 
       // Vérifier les salons ignorés
-      let ignoredChannels: string[] = [];
+      let ignoredChannels: unknown;
       try {
-        ignoredChannels = JSON.parse(config.ignoredChannelIds || "[]");
-      } catch {
-        ignoredChannels = [];
+        ignoredChannels = JSON.parse(config.ignoredChannelIds || "[]") as unknown;
+      } catch (error) {
+        console.error("[LevelService] Configuration des salons ignorés invalide:", error);
+        return;
+      }
+      if (
+        !Array.isArray(ignoredChannels) ||
+        !ignoredChannels.every((channelId) => typeof channelId === "string")
+      ) {
+        console.error("[LevelService] Configuration des salons ignorés invalide.");
+        return;
       }
 
       if (ignoredChannels.includes(message.channel.id)) return;

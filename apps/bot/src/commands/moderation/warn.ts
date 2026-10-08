@@ -6,6 +6,7 @@ import {
 } from "discord.js";
 import { Command, BotClient } from "../../client";
 import { LogService } from "../../services/logService";
+import { isTargetBelowModerator } from "../../services/moderationService";
 import prisma from "@bot/database";
 
 export const warnCommand: Command = {
@@ -35,6 +36,22 @@ export const warnCommand: Command = {
     if (targetUser.bot) {
       await interaction.reply({
         content: "❌ Vous ne pouvez pas avertir un bot.",
+        ephemeral: true,
+      });
+      return;
+    }
+
+    const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+    if (!member) {
+      await interaction.reply({
+        content: "❌ Ce membre n'est pas présent sur le serveur.",
+        ephemeral: true,
+      });
+      return;
+    }
+    if (!(await isTargetBelowModerator(interaction, member))) {
+      await interaction.reply({
+        content: "❌ Vous ne pouvez pas avertir un membre de rang égal ou supérieur au vôtre.",
         ephemeral: true,
       });
       return;

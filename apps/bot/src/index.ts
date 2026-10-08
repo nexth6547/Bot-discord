@@ -74,8 +74,8 @@ async function main() {
 
   try {
     await client.login(config.token);
-  } catch (err: any) {
-    console.error("❌ Échec de la connexion à Discord :", err.message);
+  } catch (err) {
+    console.error("❌ Échec de la connexion à Discord :", err);
   }
 }
 

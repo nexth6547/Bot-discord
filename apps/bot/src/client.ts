@@ -4,15 +4,16 @@ import {
   GatewayIntentBits,
   Partials,
   SlashCommandBuilder,
+  SlashCommandOptionsOnlyBuilder,
   ChatInputCommandInteraction,
   AutocompleteInteraction,
 } from "discord.js";
 import prisma from "@bot/database";
 
 export interface Command {
-  data: SlashCommandBuilder | any;
-  execute: (interaction: ChatInputCommandInteraction, client: BotClient) => Promise<any>;
-  autocomplete?: (interaction: AutocompleteInteraction, client: BotClient) => Promise<any>;
+  data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder;
+  execute: (interaction: ChatInputCommandInteraction, client: BotClient) => Promise<unknown>;
+  autocomplete?: (interaction: AutocompleteInteraction, client: BotClient) => Promise<unknown>;
 }
 
 export class BotClient extends Client {

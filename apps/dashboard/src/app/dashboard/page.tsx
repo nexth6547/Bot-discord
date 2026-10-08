@@ -13,11 +13,25 @@ interface Guild {
   approximateMemberCount: number | null;
 }
 
+const botPermissions = (
+  (1n << 40n) | // ModerateMembers
+  (1n << 28n) | // ManageRoles
+  (1n << 16n) | // ReadMessageHistory
+  (1n << 14n) | // EmbedLinks
+  (1n << 13n) | // ManageMessages
+  (1n << 11n) | // SendMessages
+  (1n << 10n) | // ViewChannel
+  (1n << 4n) | // ManageChannels
+  (1n << 2n) | // BanMembers
+  (1n << 1n) // KickMembers
+).toString();
+
 export default function DashboardPage() {
   const [search, setSearch] = useState("");
   const [guilds, setGuilds] = useState<Guild[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [sessionExpired, setSessionExpired] = useState(false);
   const { status } = useSession();
   const discordClientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
 
@@ -34,11 +48,15 @@ export default function DashboardPage() {
 
     fetch("/api/guilds", { cache: "no-store" })
       .then(async (response) => {
+        if (response.status === 401) {
+          if (active) setSessionExpired(true);
+          return { guilds: [] };
+        }
         if (!response.ok) throw new Error("Impossible de charger les serveurs.");
         return (await response.json()) as { guilds: Guild[] };
       })
       .then(({ guilds: loadedGuilds }) => {
-        if (active) setGuilds(loadedGuilds);
+        if (active && !sessionExpired) setGuilds(loadedGuilds);
       })
       .catch(() => {
         if (active) setError("Les serveurs Discord n'ont pas pu être chargés.");
@@ -88,6 +106,16 @@ export default function DashboardPage() {
             className="mt-5 inline-flex items-center justify-center rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-amber-400"
           >
             Se connecter avec Discord
+          </button>
+        </div>
+      ) : sessionExpired ? (
+        <div className="mt-8 rounded-xl border border-amber-500/20 bg-amber-500/5 p-8 text-center">
+          <p className="text-zinc-300">Votre session Discord a expiré. Reconnectez-vous pour continuer.</p>
+          <button
+            onClick={() => signIn("discord")}
+            className="mt-5 inline-flex items-center justify-center rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-amber-400"
+          >
+            Se reconnecter avec Discord
           </button>
         </div>
       ) : loading ? (
@@ -147,7 +175,11 @@ export default function DashboardPage() {
                 </Link>
               ) : discordClientId ? (
                 <a
-                  href={`https://discord.com/oauth2/authorize?client_id=${discordClientId}&scope=bot%20applications.commands&permissions=8`}
+                  href={`https://discord.com/oauth2/authorize?${new URLSearchParams({
+                    client_id: discordClientId,
+                    scope: "bot applications.commands",
+                    permissions: botPermissions,
+                  }).toString()}`}
                   target="_blank"
                   rel="noreferrer"
                   className="w-full inline-flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition border border-zinc-700/60"

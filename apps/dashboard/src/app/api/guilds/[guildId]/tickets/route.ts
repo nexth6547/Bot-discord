@@ -1,11 +1,36 @@
 import { NextResponse } from "next/server";
 import prisma from "@bot/database";
+import {
+  authorizeGuild,
+  ensureGuildConfig,
+  internalError,
+  invalidConfig,
+  readJsonObject,
+  validateGuildReferences,
+  validateConfig,
+} from "@/lib/guild-access";
+
+const fields = {
+  enabled: { type: "boolean" },
+  categoryId: { type: "snowflake", nullable: true },
+  supportRoleId: { type: "snowflake", nullable: true },
+  logChannelId: { type: "snowflake", nullable: true },
+  panelChannelId: { type: "snowflake", nullable: true },
+  panelMessageId: { type: "snowflake", nullable: true },
+  panelTitle: { type: "text", maxLength: 256 },
+  panelDescription: { type: "text", maxLength: 4000 },
+  buttonText: { type: "text", maxLength: 80 },
+} as const;
 
 export async function GET(
   request: Request,
   { params }: { params: { guildId: string } }
 ) {
+  const access = await authorizeGuild(params.guildId);
+  if (!access.ok) return access.response;
+
   try {
+    await ensureGuildConfig(access.guild);
     const config = await prisma.ticketConfig.findUnique({
       where: { guildId: params.guildId },
     });
@@ -26,8 +51,8 @@ export async function GET(
       },
       activeTickets,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return internalError(error, "Loading ticket settings");
   }
 }
 
@@ -35,20 +60,28 @@ export async function POST(
   request: Request,
   { params }: { params: { guildId: string } }
 ) {
+  const access = await authorizeGuild(params.guildId);
+  if (!access.ok) return access.response;
+
   try {
-    const body = await request.json();
+    await ensureGuildConfig(access.guild);
+    const body = await readJsonObject(request);
+    const data = body && validateConfig(body, fields);
+    if (!data) return invalidConfig();
+    const referenceError = await validateGuildReferences(params.guildId, data);
+    if (referenceError) return referenceError;
 
     const updated = await prisma.ticketConfig.upsert({
       where: { guildId: params.guildId },
       create: {
         guildId: params.guildId,
-        ...body,
+        ...data,
       },
-      update: body,
+      update: data,
     });
 
     return NextResponse.json(updated);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return internalError(error, "Saving ticket settings");
   }
 }

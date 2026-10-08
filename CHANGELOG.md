@@ -7,6 +7,27 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.7] - 2026-10-08 - Audit de sécurité et de cohérence
+
+### Modifié [Effectué]
+- **Dashboard** : protection des pages et des API par session Discord, permissions Administrateur/Gérer le serveur et présence effective du bot.
+- **Authentification** : renouvellement des jetons OAuth Discord ; les erreurs d'expiration sont traitées sans fallback secret de développement.
+- **API de configuration** : validation des champs autorisés, tailles, types, valeurs XP et identifiants de salons/rôles appartenant au serveur.
+- **Bot** : vérification des permissions des commandes sensibles, de la hiérarchie avant sanction, et de l'enregistrement des boutons d'auto-rôle ; fermeture de ticket réservée à l'auteur, au support ou au personnel autorisé.
+- **Tickets** : `/ticket-setup` utilise les textes du panneau persistés en base.
+- **Invitation Discord** : remplacement de `Administrator` par le jeu de permissions nécessaires au bot.
+
+### Corrigé [Effectué]
+- **Rôles interactifs** : suppression du faux enregistrement `messageId: "pending"` ; la route de création renvoie désormais une erreur explicite tant que la publication Discord n'est pas prise en charge. La suppression du dashboard efface le message Discord et vérifie le serveur propriétaire de l'enregistrement.
+- **Auto-Modération** : un échec de suppression d'un message contenant un lien interdit n'est plus suivi d'un avertissement laissant croire que le message a été supprimé.
+- **Erreurs API** : suppression des détails Prisma des réponses envoyées aux clients ; journalisation côté serveur.
+
+### Notes Techniques
+- **Validation** : génération/build du package database, vérification TypeScript du dashboard et builds du bot et du dashboard réussis.
+- **Limites restantes** : les formulaires du dashboard restent des maquettes ; les tests automatisés, les migrations Prisma, la configuration de production et la validation manuelle sur Discord restent à faire. Voir [TODO.md](./TODO.md).
+
+---
+
 ## [1.0.6] - 2026-09-25 - Feuille de route opérationnelle
 
 ### Ajouté [Effectué]

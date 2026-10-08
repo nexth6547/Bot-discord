@@ -6,6 +6,7 @@ import {
 } from "discord.js";
 import { Command, BotClient } from "../../client";
 import { LogService } from "../../services/logService";
+import { isTargetBelowModerator } from "../../services/moderationService";
 import prisma from "@bot/database";
 
 export const banCommand: Command = {
@@ -32,6 +33,14 @@ export const banCommand: Command = {
     const targetUser = interaction.options.getUser("cible", true);
     const reason = interaction.options.getString("raison") || "Aucune raison fournie";
     const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+
+    if (member && !(await isTargetBelowModerator(interaction, member))) {
+      await interaction.reply({
+        content: "❌ Vous ne pouvez pas bannir un membre de rang égal ou supérieur au vôtre.",
+        ephemeral: true,
+      });
+      return;
+    }
 
     if (member && !member.bannable) {
       await interaction.reply({

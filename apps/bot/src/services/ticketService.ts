@@ -6,7 +6,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   PermissionFlagsBits,
-  TextChannel,
+  OverwriteResolvable,
 } from "discord.js";
 import prisma from "@bot/database";
 
@@ -51,7 +51,7 @@ export class TicketService {
       }
 
       // Permissions du salon
-      const permissionOverwrites: any[] = [
+      const permissionOverwrites: OverwriteResolvable[] = [
         {
           id: interaction.guild.roles.everyone.id,
           deny: [PermissionFlagsBits.ViewChannel],
@@ -163,6 +163,23 @@ export class TicketService {
       if (!ticket) {
         await interaction.editReply({
           content: "❌ Ce salon n'est pas répertorié comme un ticket actif.",
+        });
+        return;
+      }
+
+      const member = await interaction.guild.members.fetch(interaction.user.id);
+      const config = await prisma.ticketConfig.findUnique({
+        where: { guildId: interaction.guild.id },
+        select: { supportRoleId: true },
+      });
+      const canClose =
+        ticket.userId === interaction.user.id ||
+        member.permissions.has(PermissionFlagsBits.ManageGuild) ||
+        member.permissions.has(PermissionFlagsBits.Administrator) ||
+        Boolean(config?.supportRoleId && member.roles.cache.has(config.supportRoleId));
+      if (!canClose) {
+        await interaction.editReply({
+          content: "❌ Seul l'auteur du ticket ou l'équipe de support peut le fermer.",
         });
         return;
       }

@@ -16,10 +16,8 @@ const MANAGE_GUILD = 1n << 5n;
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  const accessToken = (session as (typeof session & { accessToken?: string }) | null)
-    ?.accessToken;
 
-  if (!accessToken) {
+  if (!session?.accessToken || session.accessTokenError) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
@@ -27,7 +25,7 @@ export async function GET() {
     const discordResponse = await fetch(
       "https://discord.com/api/users/@me/guilds?with_counts=true",
       {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${session.accessToken}` },
         cache: "no-store",
       }
     );
@@ -41,8 +39,12 @@ export async function GET() {
 
     const discordGuilds = (await discordResponse.json()) as DiscordGuild[];
     const manageableGuilds = discordGuilds.filter((guild) => {
-      const permissions = BigInt(guild.permissions);
-      return Boolean(permissions & (ADMINISTRATOR | MANAGE_GUILD));
+      try {
+        const permissions = BigInt(guild.permissions);
+        return Boolean(permissions & (ADMINISTRATOR | MANAGE_GUILD));
+      } catch {
+        return false;
+      }
     });
     const configuredGuilds = await prisma.guildConfig.findMany({ select: { id: true } });
     const configuredGuildIds = new Set(configuredGuilds.map((guild) => guild.id));
@@ -58,7 +60,8 @@ export async function GET() {
         botPresent: configuredGuildIds.has(guild.id),
       })),
     });
-  } catch {
+  } catch (error) {
+    console.error("Discord guild list request failed:", error);
     return NextResponse.json({ error: "GUILDS_UNAVAILABLE" }, { status: 502 });
   }
 }
