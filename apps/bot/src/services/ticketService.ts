@@ -7,10 +7,38 @@ import {
   ButtonStyle,
   PermissionFlagsBits,
   OverwriteResolvable,
+  Guild,
 } from "discord.js";
-import prisma from "@bot/database";
+import prisma, { Prisma } from "@bot/database";
 
 export class TicketService {
+  public static async reconcileClosingTickets(guild: Guild) {
+    const closingTickets = await prisma.ticket.findMany({
+      where: { guildId: guild.id, status: "CLOSING" },
+    });
+
+    for (const ticket of closingTickets) {
+      try {
+        const channel = await guild.channels.fetch(ticket.channelId);
+        await prisma.ticket.update({
+          where: { id: ticket.id },
+          data: channel
+            ? { status: "OPEN", closedBy: null }
+            : {
+                status: "CLOSED",
+                closedAt: ticket.closedAt ?? new Date(),
+                openTicketKey: null,
+              },
+        });
+      } catch (error) {
+        console.error(
+          `[TicketService] Impossible de réconcilier le ticket ${ticket.id} au démarrage:`,
+          error
+        );
+      }
+    }
+  }
+
   /**
    * Création d'un ticket suite au clic sur le bouton
    */
@@ -21,6 +49,10 @@ export class TicketService {
 
     const guildId = interaction.guild.id;
     const user = interaction.user;
+    const openTicketKey = `${guildId}:${user.id}`;
+    let ticketChannel: Awaited<ReturnType<typeof interaction.guild.channels.create>> | null =
+      null;
+    let ticketId: string | null = null;
 
     try {
       const config = await prisma.ticketConfig.findUnique({
@@ -34,18 +66,46 @@ export class TicketService {
         return;
       }
 
-      // Vérifier si l'utilisateur a déjà un ticket ouvert
-      const existingTicket = await prisma.ticket.findFirst({
+      const existingTickets = await prisma.ticket.findMany({
         where: {
           guildId,
           userId: user.id,
-          status: "OPEN",
+          status: { in: ["OPEN", "CLOSING"] },
         },
+        orderBy: { createdAt: "desc" },
       });
 
-      if (existingTicket) {
+      for (const existingTicket of existingTickets) {
+        const existingChannel = await interaction.guild.channels.fetch(
+          existingTicket.channelId
+        );
+        if (!existingChannel) {
+          await prisma.ticket.update({
+            where: { id: existingTicket.id },
+            data: {
+              status: "CLOSED",
+              closedAt: new Date(),
+              openTicketKey: null,
+            },
+          });
+          continue;
+        }
+
+        if (
+          existingTicket.status === "OPEN" &&
+          existingTicket.openTicketKey !== openTicketKey
+        ) {
+          await prisma.ticket.update({
+            where: { id: existingTicket.id },
+            data: { openTicketKey },
+          });
+        }
+
         await interaction.editReply({
-          content: `⚠️ Vous avez déjà un ticket ouvert : <#${existingTicket.channelId}>.`,
+          content:
+            existingTicket.status === "CLOSING"
+              ? `🔒 La fermeture de votre ticket <#${existingTicket.channelId}> est déjà en cours.`
+              : `⚠️ Vous avez déjà un ticket ouvert : <#${existingTicket.channelId}>.`,
         });
         return;
       }
@@ -93,23 +153,24 @@ export class TicketService {
       const channelName = `ticket-${cleanUsername || user.id.slice(0, 4)}`;
 
       // Création du canal
-      const ticketChannel = await interaction.guild.channels.create({
+      ticketChannel = await interaction.guild.channels.create({
         name: channelName,
         type: ChannelType.GuildText,
         parent: config.categoryId || undefined,
         permissionOverwrites,
       });
 
-      // Sauvegarder dans la base
-      await prisma.ticket.create({
+      const ticket = await prisma.ticket.create({
         data: {
           guildId,
           channelId: ticketChannel.id,
           userId: user.id,
           userTag: user.tag,
           status: "OPEN",
+          openTicketKey,
         },
       });
+      ticketId = ticket.id;
 
       // Embed de bienvenue dans le salon
       const embed = new EmbedBuilder()
@@ -139,6 +200,68 @@ export class TicketService {
       });
     } catch (err) {
       console.error("[TicketService] Erreur lors de la création du ticket:", err);
+      let channelDeleted = false;
+      if (ticketChannel) {
+        try {
+          await ticketChannel.delete("Échec de l'initialisation du ticket");
+          channelDeleted = true;
+        } catch (cleanupError) {
+          console.error(
+            `[TicketService] Impossible de nettoyer le salon ${ticketChannel.id} après l'échec de création:`,
+            cleanupError
+          );
+        }
+      }
+
+      if (ticketId && channelDeleted) {
+        try {
+          await prisma.ticket.update({
+            where: { id: ticketId },
+            data: {
+              status: "CLOSED",
+              closedAt: new Date(),
+              openTicketKey: null,
+            },
+          });
+        } catch (cleanupError) {
+          console.error(
+            `[TicketService] Impossible de clôturer l'enregistrement du ticket ${ticketId} après le nettoyage Discord:`,
+            cleanupError
+          );
+        }
+      }
+
+      if (ticketChannel && !channelDeleted) {
+        await interaction.editReply({
+          content: `❌ Le ticket n'a pas pu être initialisé et le salon <#${ticketChannel.id}> n'a pas pu être supprimé. Contactez un administrateur pour le vérifier.`,
+        });
+        return;
+      }
+
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        try {
+          const activeTicket = await prisma.ticket.findFirst({
+            where: {
+              guildId,
+              userId: user.id,
+              status: { in: ["OPEN", "CLOSING"] },
+            },
+            orderBy: { createdAt: "desc" },
+          });
+          if (activeTicket) {
+            await interaction.editReply({
+              content: `⚠️ Vous avez déjà un ticket ouvert : <#${activeTicket.channelId}>.`,
+            });
+            return;
+          }
+        } catch (lookupError) {
+          console.error(
+            "[TicketService] Impossible d'identifier le ticket concurrent après conflit d'unicité:",
+            lookupError
+          );
+        }
+      }
+
       await interaction.editReply({
         content: "❌ Une erreur est survenue lors de la création du salon de ticket.",
       });
@@ -184,28 +307,77 @@ export class TicketService {
         return;
       }
 
-      await prisma.ticket.update({
-        where: { id: ticket.id },
+      const closing = await prisma.ticket.updateMany({
+        where: { id: ticket.id, status: "OPEN" },
         data: {
-          status: "CLOSED",
-          closedAt: new Date(),
+          status: "CLOSING",
           closedBy: interaction.user.tag,
         },
       });
+      if (closing.count === 0) {
+        await interaction.editReply({
+          content: "🔒 La fermeture de ce ticket est déjà en cours.",
+        });
+        return;
+      }
 
       await interaction.editReply({
         content: "🔒 Ce ticket est en cours de fermeture. Le salon sera supprimé dans 5 secondes...",
       });
 
-      setTimeout(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+
+      try {
+        await interaction.channel.delete("Ticket fermé");
+      } catch (deleteError) {
+        console.error(
+          `[TicketService] Impossible de supprimer le salon du ticket ${ticket.id}:`,
+          deleteError
+        );
         try {
-          if (interaction.channel) {
-            await interaction.channel.delete("Ticket fermé");
-          }
-        } catch (e) {
-          console.error("Erreur lors de la suppression du salon de ticket:", e);
+          await prisma.ticket.update({
+            where: { id: ticket.id },
+            data: { status: "OPEN", closedBy: null },
+          });
+          await interaction.editReply({
+            content: "❌ Le salon n'a pas pu être supprimé. Le ticket reste ouvert ; vérifiez les permissions du bot puis réessayez.",
+          });
+        } catch (recoveryError) {
+          console.error(
+            `[TicketService] Impossible de restaurer l'état ouvert du ticket ${ticket.id}:`,
+            recoveryError
+          );
+          await interaction.editReply({
+            content: "❌ Le salon n'a pas pu être supprimé et l'état du ticket n'a pas pu être restauré. Un administrateur doit vérifier ce ticket.",
+          });
         }
-      }, 5000);
+        return;
+      }
+
+      try {
+        await prisma.ticket.update({
+          where: { id: ticket.id },
+          data: {
+            status: "CLOSED",
+            closedAt: new Date(),
+            closedBy: interaction.user.tag,
+            openTicketKey: null,
+          },
+        });
+      } catch (databaseError) {
+        console.error(
+          `[TicketService] Le salon du ticket ${ticket.id} a été supprimé, mais son état n'a pas pu être finalisé en base:`,
+          databaseError
+        );
+        await interaction.editReply({
+          content: "✅ Le salon a été supprimé. La base n'a pas pu confirmer la fermeture ; elle sera réconciliée lors de la prochaine demande de ticket.",
+        });
+        return;
+      }
+
+      await interaction.editReply({
+        content: "✅ Le ticket a été fermé et son salon supprimé.",
+      });
     } catch (err) {
       console.error("[TicketService] Erreur lors de la fermeture:", err);
       await interaction.editReply({

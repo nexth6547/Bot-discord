@@ -70,9 +70,10 @@ La connexion OAuth avec un vrai compte, l’accès aux serveurs réels et les co
 - [ ] Encadrer la collecte et la conservation des données : contenu des messages journalisés, sanctions, données XP, suppression à la demande et durée de rétention.
 
 ### Robustesse du cycle de vie des tickets
-- [ ] Empêcher la création concurrente de plusieurs tickets ouverts pour un même membre et serveur ; garantir l’unicité même lorsque plusieurs clics arrivent simultanément.
-- [ ] Nettoyer les ressources Discord ou en base déjà créées si une étape ultérieure de création/enregistrement du ticket échoue, et journaliser explicitement les échecs de compensation.
-- [ ] Ne pas marquer un ticket fermé tant que la fermeture effective du salon n’est pas confirmée ; en cas d’échec de suppression Discord, afficher l’échec et permettre une nouvelle tentative sans incohérence entre le salon et la base.
+- [x] Empêcher la création concurrente de plusieurs tickets ouverts pour un même membre et serveur avec une clé active unique en base ; réconcilier les enregistrements historiques sans clé avant toute nouvelle création.
+- [x] Nettoyer le salon Discord si l'initialisation ou l'enregistrement du ticket échoue ; journaliser et signaler explicitement les échecs de compensation.
+- [x] Ne marquer un ticket fermé qu'après suppression confirmée du salon ; en cas d'échec, restaurer son état ouvert et signaler toute erreur de restauration. Réconcilier les tickets en fermeture interrompue au redémarrage.
+- [ ] Tester les doubles clics et les échecs injectés (Discord, SQLite, nettoyage et redémarrage) avec des tests automatisés et sur un serveur de test.
 
 ## P1 — Démarrage et exploitation automatiques
 

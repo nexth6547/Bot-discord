@@ -2,6 +2,7 @@ import { REST, Routes, ActivityType } from "discord.js";
 import { BotClient } from "../client";
 import { config } from "../config";
 import { syncGuildConfig } from "../services/guildConfigService";
+import { TicketService } from "../services/ticketService";
 
 export async function onReady(client: BotClient) {
   console.log(`🤖 Bot connecté en tant que ${client.user?.tag} (${client.user?.id})`);
@@ -12,6 +13,15 @@ export async function onReady(client: BotClient) {
     } catch (err) {
       console.error(
         `❌ Erreur lors de la synchronisation du serveur ${guild.id} au démarrage :`,
+        err
+      );
+    }
+
+    try {
+      await TicketService.reconcileClosingTickets(guild);
+    } catch (err) {
+      console.error(
+        `❌ Erreur lors de la réconciliation des tickets du serveur ${guild.id}:`,
         err
       );
     }

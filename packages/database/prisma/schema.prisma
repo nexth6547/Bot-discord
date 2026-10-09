@@ -112,7 +112,8 @@ model Ticket {
   channelId    String       @unique
   userId       String
   userTag      String?
-  status       String       @default("OPEN") // OPEN, CLOSED
+  status       String       @default("OPEN") // OPEN, CLOSING, CLOSED
+  openTicketKey String?     @unique
   closedAt     DateTime?
   closedBy     String?
   createdAt    DateTime     @default(now())

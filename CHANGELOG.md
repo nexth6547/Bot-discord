@@ -7,6 +7,20 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.15] - 2026-10-09 - Fiabilisation du cycle de vie des tickets
+
+### Modifié [Effectué]
+- **Création des tickets** : clé active unique en base pour empêcher les créations concurrentes ; détection des salons historiques manquants et réconciliation des lignes périmées.
+- **Compensation** : suppression du salon créé si l'initialisation du ticket échoue ; journalisation et réponse explicite si le nettoyage ou la finalisation DB échoue.
+- **Fermeture** : passage à l'état `CLOSING`, suppression du salon avant l'état `CLOSED`, restauration de l'état ouvert en cas d'échec et réconciliation au redémarrage des fermetures interrompues.
+
+### Notes Techniques
+- **Schéma Prisma** : ajout de `Ticket.openTicketKey` nullable et unique. Après sauvegarde de la base, appliquer le schéma local avec `pnpm db:push`, puis générer le client avec `pnpm db:generate` avant de démarrer le bot.
+- **Validation** : génération Prisma effectuée ; build complet et `git diff --check` à exécuter après les changements de service.
+- Les essais de concurrence et d'échec réel Discord/SQLite restent à faire.
+
+---
+
 ## [1.0.14] - 2026-10-09 - Compléments de la feuille de route
 
 ### Modifié [Effectué]
