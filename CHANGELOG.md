@@ -7,6 +7,13 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.14] - 2026-10-09 - Compléments de la feuille de route
+
+### Modifié [Effectué]
+- **TODO** : ajout de critères vérifiables concernant les mentions des messages personnalisés, les scénarios de test de bout en bout et la cohérence des tickets en cas de clics concurrents ou d'échecs partiels.
+
+---
+
 ## [1.0.13] - 2026-10-09 - Synchronisation du cycle de vie serveur
 
 ### Ajouté [Effectué]

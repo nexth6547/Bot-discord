@@ -65,7 +65,14 @@ La connexion OAuth avec un vrai compte, l’accès aux serveurs réels et les co
 - [ ] Ajouter des scripts de test et de vérification des types/lint dans le monorepo, puis une CI qui exécute installation verrouillée, tests et builds sur chaque changement.
 - [ ] Tester sur un serveur Discord de test avec des permissions minimales, des rôles proches de la hiérarchie du bot et des salons supprimés/renommés.
 - [ ] Vérifier les limites Discord : délais d’interaction, rate limits, contenu d’embed, permissions manquantes, utilisateurs/canaux partiels et réponses après une interaction déjà différée.
+- [ ] Définir et appliquer une politique de mentions autorisées pour les messages personnalisés de bienvenue, départ et annonces XP ; empêcher les mentions générales ou de rôles non souhaitées et tester le comportement.
+- [ ] Ajouter des tests de parcours bout en bout : une sauvegarde refusée par Discord ne doit pas afficher de succès, les salons/rôles supprimés doivent produire une erreur exploitable, et les erreurs d’interaction après expiration doivent être journalisées clairement.
 - [ ] Encadrer la collecte et la conservation des données : contenu des messages journalisés, sanctions, données XP, suppression à la demande et durée de rétention.
+
+### Robustesse du cycle de vie des tickets
+- [ ] Empêcher la création concurrente de plusieurs tickets ouverts pour un même membre et serveur ; garantir l’unicité même lorsque plusieurs clics arrivent simultanément.
+- [ ] Nettoyer les ressources Discord ou en base déjà créées si une étape ultérieure de création/enregistrement du ticket échoue, et journaliser explicitement les échecs de compensation.
+- [ ] Ne pas marquer un ticket fermé tant que la fermeture effective du salon n’est pas confirmée ; en cas d’échec de suppression Discord, afficher l’échec et permettre une nouvelle tentative sans incohérence entre le salon et la base.
 
 ## P1 — Démarrage et exploitation automatiques
 
