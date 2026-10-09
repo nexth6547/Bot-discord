@@ -7,6 +7,17 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.12] - 2026-10-09 - Mise à jour des commandes documentées
+
+### Modifié [Effectué]
+- **README** : ajout de l'installation pnpm, de la copie du modèle `.env`, de la génération Prisma explicite et d'un tableau des scripts réellement déclarés ; clarification que `pnpm dev` ne lance que le bot et que le lancement local complet nécessite deux terminaux ; mise à jour de la description du thème réel (fond zinc, accents ambre).
+- **Base de données** : précision que `db:push` sert au développement local, les migrations et le déploiement de production n'étant pas encore configurés.
+
+### Notes Techniques
+- **Validation** : `pnpm db:generate`, `pnpm --filter @bot/database generate` et `pnpm build` réussis ; `git diff --check` vérifié.
+
+---
+
 ## [1.0.11] - 2026-10-09 - Clarification du lien développeur Discord
 
 ### Modifié [Effectué]

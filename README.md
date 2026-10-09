@@ -58,6 +58,12 @@ Bot Discord/
 
 ## 🚀 Guide de Démarrage Rapide
 
+### 0. Installer les dépendances
+Depuis la racine du dépôt, avec pnpm installé :
+```powershell
+pnpm install
+```
+
 ### 1. Configuration sur le Portail Discord
 1. Rendez-vous sur le [Discord Developer Portal](https://discord.com/developers/applications) et cliquez sur **New Application**.
 2. Allez dans l'onglet **Bot** :
@@ -74,7 +80,11 @@ Bot Discord/
 4. Invitez le bot sur votre serveur de test avec les scopes `bot` et `applications.commands`. Accordez uniquement les permissions nécessaires : Voir les salons, Envoyer des messages, Lire l'historique des messages, Intégrer des liens, Gérer les salons, Gérer les rôles, Gérer les messages, Bannir des membres, Expulser des membres et Modérer les membres. N'accordez pas `Administrator`.
 
 ### 2. Configuration du fichier `.env`
-Ouvrez le fichier `.env` à la racine et renseignez vos identifiants :
+Copiez le modèle à la racine du dépôt, puis renseignez vos identifiants dans `.env` :
+```powershell
+Copy-Item .env.example .env
+```
+
 ```env
 DISCORD_TOKEN="votre_token_ici"
 DISCORD_CLIENT_ID="votre_client_id_ici"
@@ -87,10 +97,14 @@ DATABASE_URL="file:../../dev.db"
 ```
 
 ### 3. Initialiser la Base de Données
+Générez le client Prisma (également exécuté automatiquement par `pnpm install`), puis créez/actualisez le schéma SQLite :
 ```powershell
+pnpm db:generate
 pnpm db:push
 ```
 *(Optionnel) Pour visualiser la base dans votre navigateur : `pnpm db:studio`*
+
+> `pnpm db:generate` est l'alias racine de `pnpm --filter @bot/database generate`. Le workspace expose le script `generate` (et non un script `prisma`).
 
 ### 4. Lancer le Dashboard Web
 ```powershell
@@ -104,9 +118,23 @@ Dans un autre terminal :
 pnpm dev:bot
 ```
 
+### Autres commandes disponibles
+À lancer depuis la racine du dépôt :
+
+| Commande | Action |
+| --- | --- |
+| `pnpm dev:dashboard` | Lance le dashboard en développement sur le port 3000. |
+| `pnpm dev:bot` | Lance le bot en mode développement avec rechargement. |
+| `pnpm dev` | Alias actuel de `pnpm dev:bot` ; ne lance pas le dashboard. |
+| `pnpm build` | Compile les workspaces database, bot et dashboard. |
+| `pnpm build:bot` | Compile le bot. |
+| `pnpm build:dashboard` | Compile le dashboard. |
+| `pnpm --filter @bot/core start` | Démarre le bot compilé ; exécuter un build auparavant. |
+| `pnpm --filter @bot/dashboard start` | Démarre le dashboard compilé ; exécuter un build auparavant. |
+
+Pour une utilisation locale complète, laissez le bot et le dashboard tourner dans deux terminaux distincts. Les migrations versionnées et le déploiement de production restent à définir ; `pnpm db:push` est prévu ici pour le développement local.
+
 ---
 
-## 🎨 Personnalisation Future du Thème
-Le dashboard est conçu avec un **style neutre (palette slate/zinc)** :
-- Les couleurs et bordures sont déclarées dans `apps/dashboard/tailwind.config.ts` et `apps/dashboard/src/app/globals.css`.
-- Lorsque vous aurez défini le thème et le nom final du serveur, il suffira de modifier ces variables pour adapter instantanément l'interface à votre univers !
+## 🎨 Thème
+Le dashboard Bloomera utilise actuellement un **fond sombre zinc avec des accents ambre**. Les couleurs Discord et les couleurs de fond sont définies dans `apps/dashboard/tailwind.config.ts` et `apps/dashboard/src/app/globals.css` ; plusieurs accents ambre sont appliqués directement dans les composants.
