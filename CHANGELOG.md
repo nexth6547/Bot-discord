@@ -7,6 +7,16 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [Non versionné] - 2026-10-09 - Configuration locale
+
+### Ajouté [Effectué]
+- **Environnement local** : création d'un fichier `.env` ignoré par Git, basé sur `.env.example` et contenant uniquement des valeurs indicatives à remplacer par les identifiants Discord réels.
+
+### Notes Techniques
+- Aucun jeton ni secret réel n'a été ajouté ; les valeurs de démonstration doivent être remplacées avant le démarrage.
+
+---
+
 ## [1.0.8] - 2026-10-09 - Validation de démarrage et variables d'environnement
 
 ### Ajouté [Effectué]
