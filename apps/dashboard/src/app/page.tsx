@@ -75,7 +75,7 @@ export default function Home() {
             rel="noreferrer"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-medium border border-zinc-800 transition"
           >
-            <span>Créer l'app Discord</span>
+            <span>Portail développeur Discord</span>
           </a>
         </div>
       </div>

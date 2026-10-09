@@ -7,6 +7,13 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.11] - 2026-10-09 - Clarification du lien développeur Discord
+
+### Modifié [Effectué]
+- **Page d’accueil** : remplacement du libellé « Créer l'app Discord » par « Portail développeur Discord », plus précis puisque le lien ouvre le portail développeur et ne crée pas directement l’application.
+
+---
+
 ## [1.0.10] - 2026-10-09 - Cohérence des options API
 
 ### Corrigé [Effectué]
