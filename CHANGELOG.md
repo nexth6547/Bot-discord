@@ -7,6 +7,13 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.17] - 2026-10-09 - Exclusion de la base SQLite locale
+
+### Modifié [Effectué]
+- **Git** : ajout de `packages/dev.db` au `.gitignore` afin d'éviter d'ajouter par erreur la base locale et ses données au dépôt.
+
+---
+
 ## [1.0.16] - 2026-10-09 - Chargement de DATABASE_URL pour Prisma
 
 ### Corrigé [Effectué]
