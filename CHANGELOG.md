@@ -7,6 +7,20 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.8] - 2026-10-09 - Validation de démarrage et variables d'environnement
+
+### Ajouté [Effectué]
+- **Validation de configuration** : ajout d'un contrôle de démarrage pour les variables Discord et NextAuth afin d'alerter sur les secrets de démonstration, les identifiants manquants et les valeurs non conformes avant le lancement du bot ou de l'authentification dashboard.
+
+### Modifié [Effectué]
+- **Runtime configuration** : les warnings de démarrage ne bloquent plus le build local, tout en restant visibles lors du lancement réel pour éviter les installations incomplètes en production.
+
+### Notes Techniques
+- **Impact** : validation légère des variables `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL` et détection des placeholders de développement (`VOTRE_*`, `une_cle_secrete...`).
+- **Compatibilité** : le build monorepo continue d'être exécutable sans `.env` local, tout en signalant les variables manquantes de manière explicite.
+
+---
+
 ## [1.0.7] - 2026-10-08 - Audit de sécurité et de cohérence
 
 ### Modifié [Effectué]

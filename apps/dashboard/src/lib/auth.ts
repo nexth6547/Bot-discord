@@ -1,6 +1,47 @@
 import { NextAuthOptions } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 
+const isSnowflake = (value: string | undefined) =>
+  typeof value === "string" && /^\d{17,20}$/.test(value.trim());
+
+export function validateDashboardEnvironment() {
+  const state = globalThis as typeof globalThis & { __dashboardAuthWarningShown?: boolean };
+  if (state.__dashboardAuthWarningShown) {
+    return;
+  }
+
+  const errors: string[] = [];
+
+  if (!process.env.DISCORD_CLIENT_ID || !isSnowflake(process.env.DISCORD_CLIENT_ID)) {
+    errors.push("DISCORD_CLIENT_ID est absent ou invalide.");
+  }
+
+  if (!process.env.DISCORD_CLIENT_SECRET || process.env.DISCORD_CLIENT_SECRET.length < 20) {
+    errors.push("DISCORD_CLIENT_SECRET est absent ou trop court.");
+  }
+
+  if (!process.env.NEXTAUTH_SECRET || process.env.NEXTAUTH_SECRET.length < 32) {
+    errors.push("NEXTAUTH_SECRET est absent ou trop court (32 caractères minimum).");
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    if (!process.env.NEXTAUTH_URL) {
+      errors.push("NEXTAUTH_URL doit être défini en production.");
+    }
+    if (process.env.NEXTAUTH_SECRET && /une_cle_secrete|votre_secret/i.test(process.env.NEXTAUTH_SECRET)) {
+      errors.push("NEXTAUTH_SECRET ne doit pas rester sur une valeur de développement en production.");
+    }
+  }
+
+  if (errors.length > 0) {
+    const message = ["⚠️ Configuration OAuth Discord / NextAuth incomplète ou invalide :", ...errors].join("\n- ");
+    console.warn(message);
+    state.__dashboardAuthWarningShown = true;
+  }
+}
+
+validateDashboardEnvironment();
+
 export const authOptions: NextAuthOptions = {
   providers: [
     DiscordProvider({
