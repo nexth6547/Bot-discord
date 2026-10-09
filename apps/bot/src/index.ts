@@ -25,6 +25,8 @@ import { onGuildMemberRemove } from "./events/guildMemberRemove";
 import { onMessageCreate } from "./events/messageCreate";
 import { onMessageDelete } from "./events/messageDelete";
 import { onMessageUpdate } from "./events/messageUpdate";
+import { onGuildMemberUpdate } from "./events/guildMemberUpdate";
+import { onVoiceStateUpdate } from "./events/voiceStateUpdate";
 import { onInteractionCreate } from "./events/interactionCreate";
 
 async function main() {
@@ -61,6 +63,8 @@ async function main() {
   client.on("guildCreate", onGuildCreate);
   client.on("guildMemberAdd", onGuildMemberAdd);
   client.on("guildMemberRemove", onGuildMemberRemove);
+  client.on("guildMemberUpdate", onGuildMemberUpdate);
+  client.on("voiceStateUpdate", onVoiceStateUpdate);
   client.on("messageCreate", onMessageCreate);
   client.on("messageDelete", onMessageDelete);
   client.on("messageUpdate", onMessageUpdate);

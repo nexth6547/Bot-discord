@@ -19,7 +19,15 @@ export default async function GuildDashboardLayout({
 
   return (
     <div className="flex-1 flex min-h-[calc(100vh-4rem)]">
-      <Sidebar guildId={params.guildId} guildName={access.guild.name} />
+      <Sidebar
+        guildId={params.guildId}
+        guildName={access.guild.name}
+        guildIcon={
+          access.guild.icon
+            ? `https://cdn.discordapp.com/icons/${access.guild.id}/${access.guild.icon}.${access.guild.icon.startsWith("a_") ? "gif" : "png"}?size=128`
+            : null
+        }
+      />
       <div className="flex-1 overflow-y-auto bg-zinc-950 p-6 sm:p-8 lg:p-10">
         <div className="max-w-4xl mx-auto">{children}</div>
       </div>

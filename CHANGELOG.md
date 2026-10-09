@@ -7,10 +7,29 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.9] - 2026-10-09 - Connexion des réglages Accueil/Départ
+
+### Ajouté [Effectué]
+- **Ressources Discord** : route protégée `/api/guilds/[guildId]/resources` qui expose les salons et les rôles assignables réellement disponibles sur le serveur.
+
+### Modifié [Effectué]
+- **Accueil/Départ** : chargement des paramètres et des ressources depuis les API, affichage des vrais salons/rôles avec leurs IDs, persistance effective des réglages et états de chargement, erreur et sauvegarde.
+- **Validation des permissions** : les écritures vérifient les permissions effectives du bot par salon, en appliquant les overwrites Discord, et contrôlent gestion de salons/rôles et hiérarchie pour les actions concernées.
+- **Identité du serveur** : l'icône Discord réelle est affichée dans le menu latéral du dashboard.
+- **Configuration Next.js** : le dashboard charge maintenant les variables depuis le `.env` racine, notamment lors du build production.
+- **Journaux Discord** : ajout des handlers de changements de rôles et d'états vocaux ; ils alimentent les salons configurés via `LogConfig`.
+
+### Notes Techniques
+- **Validation** : `pnpm build` réussit pour les trois workspaces ; le dashboard ne signale plus les variables root `.env` comme absentes.
+- **Dépendance** : ajout de `dotenv` au workspace dashboard et mise à jour de `pnpm-lock.yaml` pour charger explicitement le `.env` du monorepo.
+- Les formulaires des autres onglets et les tests de parcours Discord restent ouverts dans [TODO.md](./TODO.md).
+
+---
+
 ## [Non versionné] - 2026-10-09 - Configuration locale
 
 ### Ajouté [Effectué]
-- **Environnement local** : création d'un fichier `.env` ignoré par Git, basé sur `.env.example` et contenant uniquement des valeurs indicatives à remplacer par les identifiants Discord réels.
+- **Environnement local** : création d'un fichier `.env` ignoré par Git, basé sur `.env.example` et réservé à la configuration locale, sans ajout au dépôt.
 
 ### Corrigé [Effectué]
 - **Secret NextAuth local** : remplacement de la valeur d'exemple par un secret aléatoire cryptographique généré localement ; sa valeur n'est ni affichée ni ajoutée au dépôt.

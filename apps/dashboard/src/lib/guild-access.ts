@@ -19,6 +19,12 @@ interface DiscordGuild {
 interface DiscordChannel {
   id: string;
   type: number;
+  permission_overwrites: Array<{
+    id: string;
+    type: number;
+    allow: string;
+    deny: string;
+  }>;
 }
 
 interface DiscordRole {
@@ -29,7 +35,66 @@ interface DiscordRole {
 }
 
 interface DiscordMember {
+  user: { id: string };
   roles: string[];
+}
+
+const DISCORD_PERMISSIONS = {
+  administrator: 1n << 3n,
+  manageChannels: 1n << 4n,
+  manageRoles: 1n << 28n,
+  viewChannel: 1n << 10n,
+  sendMessages: 1n << 11n,
+  embedLinks: 1n << 14n,
+};
+
+function effectiveChannelPermissions(
+  guildId: string,
+  botMember: DiscordMember,
+  roles: DiscordRole[],
+  channel: DiscordChannel
+): bigint {
+  const botRoleIds = new Set(botMember.roles);
+  let permissions = roles
+    .filter((role) => role.id === guildId || botRoleIds.has(role.id))
+    .reduce((total, role) => total | BigInt(role.permissions), 0n);
+
+  if (permissions & DISCORD_PERMISSIONS.administrator) return (1n << 53n) - 1n;
+
+  const overwrites = channel.permission_overwrites ?? [];
+  const everyoneOverwrite = overwrites.find(
+    (overwrite) => overwrite.type === 0 && overwrite.id === guildId
+  );
+  if (everyoneOverwrite) {
+    permissions =
+      (permissions & ~BigInt(everyoneOverwrite.deny)) |
+      BigInt(everyoneOverwrite.allow);
+  }
+
+  const botRoleOverwrites = overwrites.filter(
+    (overwrite) => overwrite.type === 0 && botRoleIds.has(overwrite.id)
+  );
+  if (botRoleOverwrites.length > 0) {
+    const deny = botRoleOverwrites.reduce(
+      (total, overwrite) => total | BigInt(overwrite.deny),
+      0n
+    );
+    const allow = botRoleOverwrites.reduce(
+      (total, overwrite) => total | BigInt(overwrite.allow),
+      0n
+    );
+    permissions = (permissions & ~deny) | allow;
+  }
+
+  const memberOverwrite = overwrites.find(
+    (overwrite) => overwrite.type === 1 && overwrite.id === botMember.user.id
+  );
+  if (memberOverwrite) {
+    permissions =
+      (permissions & ~BigInt(memberOverwrite.deny)) |
+      BigInt(memberOverwrite.allow);
+  }
+  return permissions;
 }
 
 type GuildAccess =
@@ -275,13 +340,13 @@ export async function validateGuildReferences(
             cache: "no-store",
           })
         : Promise.resolve(null),
-      uniqueRoleIds.length
+      uniqueChannelIds.length || uniqueRoleIds.length
         ? fetch(`https://discord.com/api/v10/guilds/${guildId}/roles`, {
             headers: { Authorization: `Bot ${botToken}` },
             cache: "no-store",
           })
         : Promise.resolve(null),
-      uniqueRoleIds.length
+      uniqueChannelIds.length || uniqueRoleIds.length
         ? fetch(`https://discord.com/api/v10/guilds/${guildId}/members/@me`, {
             headers: { Authorization: `Bot ${botToken}` },
             cache: "no-store",
@@ -317,6 +382,46 @@ export async function validateGuildReferences(
       ) {
         return NextResponse.json({ error: "INVALID_CHANNEL_TYPE" }, { status: 400 });
       }
+
+      if (key === "categoryId") {
+        const botRoles = new Set(botMember?.roles ?? []);
+        const canManageChannels = roles
+          .filter((role) => role.id === guildId || botRoles.has(role.id))
+          .some(
+            (role) =>
+              (BigInt(role.permissions) &
+                (DISCORD_PERMISSIONS.manageChannels |
+                  DISCORD_PERMISSIONS.administrator)) !==
+              0n
+          );
+        if (!canManageChannels) {
+          return NextResponse.json(
+            { error: "BOT_MISSING_MANAGE_CHANNELS" },
+            { status: 400 }
+          );
+        }
+      } else if (key !== "ignoredChannelIds" && botMember) {
+        const effective = effectiveChannelPermissions(
+          guildId,
+          botMember,
+          roles,
+          channel
+        );
+        let required =
+          DISCORD_PERMISSIONS.viewChannel | DISCORD_PERMISSIONS.sendMessages;
+        if (
+          key !== "announceChannelId" &&
+          (key !== "channelId" || values.useEmbed !== false)
+        ) {
+          required |= DISCORD_PERMISSIONS.embedLinks;
+        }
+        if ((effective & required) !== required) {
+          return NextResponse.json(
+            { error: "BOT_MISSING_CHANNEL_PERMISSIONS", channelId: rawId },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     const rolesById = new Map(roles.map((role) => [role.id, role]));
@@ -326,22 +431,32 @@ export async function validateGuildReferences(
       }
     }
 
-    const autoRoleId = values.autoRoleId;
-    if (typeof autoRoleId === "string") {
+    const assignableRoleIds = [values.autoRoleId, values.muteRoleId].filter(
+      (roleId): roleId is string => typeof roleId === "string"
+    );
+    if (assignableRoleIds.length > 0) {
       const botRoles = new Set(botMember?.roles ?? []);
       const highestBotPosition = Math.max(
         0,
         ...roles.filter((role) => botRoles.has(role.id)).map((role) => role.position)
       );
-      const autoRole = rolesById.get(autoRoleId);
       const hasManageRoles = roles
         .filter((role) => role.id === guildId || botRoles.has(role.id))
         .some(
           (role) =>
-            (BigInt(role.permissions) & ((1n << 28n) | (1n << 3n))) !== 0n
+            (BigInt(role.permissions) &
+              (DISCORD_PERMISSIONS.manageRoles |
+                DISCORD_PERMISSIONS.administrator)) !==
+            0n
         );
 
-      if (!autoRole || autoRole.managed || autoRole.position >= highestBotPosition || !hasManageRoles) {
+      if (
+        assignableRoleIds.some((roleId) => {
+          const role = rolesById.get(roleId);
+          return !role || role.managed || role.position >= highestBotPosition;
+        }) ||
+        !hasManageRoles
+      ) {
         return NextResponse.json({ error: "BOT_CANNOT_ASSIGN_ROLE" }, { status: 400 });
       }
     }

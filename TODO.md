@@ -1,6 +1,6 @@
 # Bloomera — feuille de route vers un fonctionnement complet
 
-État audité le 8 octobre 2026. « 100 % opérationnel » signifie que les fonctions présentées sont réellement branchées, sécurisées, testées sur Discord et redémarrent sans intervention manuelle.
+État audité le 9 octobre 2026. « 100 % opérationnel » signifie que les fonctions présentées sont réellement branchées, sécurisées, testées sur Discord et redémarrent sans intervention manuelle.
 
 ## Vérifié et corrigé lors de l'audit du 8 octobre
 
@@ -12,7 +12,7 @@
 - [x] Le panneau de tickets du bot réutilise les textes enregistrés et sa fermeture est limitée à l'auteur, au support ou au personnel autorisé.
 - [x] L'invitation du bot ne demande plus la permission Administrator ; les échecs de suppression Auto-Mod ne sont plus présentés comme des succès.
 
-Ces corrections ne valident pas les parcours Discord réels et ne remplacent pas les éléments encore ouverts ci-dessous. Les formulaires du dashboard affichent toujours des données de démonstration et leurs boutons ne sauvegardent pas ; ne pas considérer les critères de livraison comme atteints.
+Ces corrections ne valident pas les parcours Discord réels et ne remplacent pas les éléments encore ouverts ci-dessous. Les pages Accueil/Départ sont désormais reliées à l'API ; les autres formulaires du dashboard affichent encore des données de démonstration et ne sauvegardent pas toutes leurs valeurs. Ne pas considérer les critères de livraison comme atteints.
 
 ## Déjà validé
 
@@ -27,19 +27,19 @@ La connexion OAuth avec un vrai compte, l’accès aux serveurs réels et les co
 
 - [x] Protéger toutes les pages `/dashboard/[guildId]` : session obligatoire, permission Discord `Administrator` ou `ManageGuild`, bot réellement présent sur le serveur.
 - [x] Appliquer la même autorisation à chaque route `/api/guilds/[guildId]`, y compris `GET`, `POST` et `DELETE` ; vérifier l’appartenance de l’objet supprimé au serveur demandé.
-- [ ] Compléter la validation des écritures par le calcul des permissions effectives du bot sur chaque salon et les contrôles de hiérarchie nécessaires à chaque action ; la validation des champs, formats et appartenances des salons/rôles est en place.
+- [x] Compléter la validation des écritures par le calcul des permissions effectives du bot (rôles cumulés et overwrites @everyone/rôles/membre), avec les permissions d'envoi/embeds, de gestion des salons et de hiérarchie d'attribution nécessaires aux références utilisées.
 - [x] Gérer l’expiration/révocation du jeton OAuth et demander une reconnexion claire plutôt que laisser échouer le chargement.
 - [ ] Remplacer les valeurs locales et boutons de sauvegarde simulés de chaque onglet par les valeurs de l’API et des enregistrements Prisma :
   - [ ] Vue d’ensemble : supprimer les compteurs fictifs (membres, sanctions, tickets, XP), afficher des données réelles avec leur source et leur date d’actualisation.
   - [ ] Paramètres généraux : charger et sauvegarder les valeurs réelles. Le préfixe et la langue sont actuellement présentés dans l’interface mais ne pilotent pas les commandes du bot ; les implémenter réellement ou retirer ces réglages.
-  - [ ] Accueil/départ : brancher lecture et sauvegarde, utiliser les vrais salons et rôles Discord et afficher les vraies valeurs initiales.
+  - [x] Accueil/départ : brancher lecture et sauvegarde, utiliser les vrais salons et rôles Discord et afficher les vraies valeurs initiales.
   - [ ] Modération : charger/sauvegarder la configuration et l’historique réel des sanctions ; retirer les lignes d’exemple.
   - [ ] Journaux : charger/sauvegarder les salons réels et ne pas annoncer les catégories vocales/rôles tant que leurs événements ne sont pas traités.
   - [ ] Tickets : charger/sauvegarder les paramètres et tickets réels ; publier ou mettre à jour le vrai panneau Discord depuis le dashboard.
   - [ ] Niveaux : charger/sauvegarder les paramètres et le vrai classement XP ; retirer les membres d’exemple.
   - [ ] Rôles interactifs : lister les panneaux réellement publiés ; créer/supprimer à la fois les messages Discord et leurs enregistrements. Ne jamais créer d’entrée avec `messageId: "pending"` comme si le bouton fonctionnait.
-- [ ] Ajouter une route serveur protégée fournissant les salons, catégories et rôles réels du serveur ; les sélecteurs ne doivent plus contenir de noms fictifs ni confondre nom affiché et ID Discord.
-- [ ] Synchroniser aussi l’icône du serveur dans le layout et les pages ; le nom est maintenant chargé depuis Discord dans le layout.
+- [x] Ajouter une route serveur protégée fournissant les salons, catégories et rôles réels du serveur ; les sélecteurs de la page Accueil/Départ utilisent désormais les IDs Discord, les noms restent des libellés.
+- [x] Synchroniser aussi l’icône du serveur dans le layout et les pages ; le nom et l'icône sont chargés depuis Discord dans le layout.
 - [ ] Ajouter chargement, état vide, erreur, sauvegarde en cours et confirmation réelle pour chaque formulaire ; une sauvegarde affichée comme réussie doit avoir reçu une réponse serveur positive.
 
 ## P0 — Cohérence entre configuration et comportement du bot
@@ -47,7 +47,7 @@ La connexion OAuth avec un vrai compte, l’accès aux serveurs réels et les co
 - [ ] Faire utiliser au panneau de tickets les valeurs `panelTitle`, `panelDescription` et `buttonText` enregistrées par le dashboard et mettre à jour le panneau Discord existant lors d'une sauvegarde ; `/ticket-setup` réutilise maintenant les valeurs enregistrées à son exécution.
 - [ ] Implémenter la protection anti-spam annoncée (seuil, fenêtre temporelle, sanction configurable), ou supprimer/masquer le réglage `autoModAntiSpam` tant qu’elle n’existe pas.
 - [ ] Implémenter et vérifier les contrôles liés aux rôles modérateur, administrateur et muet ; ces valeurs existent en base mais leur usage effectif doit être défini et testé.
-- [ ] Ajouter les événements manquants pour que les journaux vocaux et de rôles fonctionnent réellement (états vocaux et changements de membre/rôle), ou retirer ces choix des réglages.
+- [x] Ajouter les événements manquants pour que les journaux vocaux et de rôles fonctionnent réellement (états vocaux et changements de membre/rôle).
 - [ ] Vérifier les valeurs de bienvenue et de départ, les salons, l’auto-rôle et les couleurs de secours entre schéma, dashboard et handlers ; garder la palette Bloomera cohérente.
 - [ ] Vérifier le cycle de vie d’un serveur : création/synchronisation de la configuration à l’ajout du bot, mise à jour du nom/icône, traitement du retrait du bot et nettoyage/archivage des données associées.
 - [ ] Compléter les contrôles de toutes les commandes slash sur les cibles invalides, la hiérarchie et les permissions du bot ; les commandes sensibles revalident désormais les permissions du membre, et les sanctions vérifient la hiérarchie de leur cible.
@@ -55,6 +55,7 @@ La connexion OAuth avec un vrai compte, l’accès aux serveurs réels et les co
 ## P1 — Données, tests et qualité
 
 - [ ] Ajouter une validation de configuration au démarrage : variables requises, formats Discord/OAuth, URL de callback et refus des secrets de développement en production.
+- [x] Charger dans Next.js les variables du `.env` à la racine du monorepo, y compris `NEXT_PUBLIC_DISCORD_CLIENT_ID` au build du dashboard.
 - [ ] Remplacer `prisma db push` comme procédure de production par des migrations versionnées, avec une procédure documentée de sauvegarde et restauration SQLite.
 - [ ] Garantir qu’une base fraîche peut être initialisée automatiquement et que le bot et le dashboard attendent une base prête avant de traiter les requêtes.
 - [ ] Ajouter des tests automatisés : permissions et autorisations API, persistance des réglages, calcul XP/cooldown, modération, tickets, rôles interactifs et handlers d’événements.

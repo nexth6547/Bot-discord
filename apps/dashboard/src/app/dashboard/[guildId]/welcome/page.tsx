@@ -1,31 +1,139 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Sparkles, Save, Check, Eye } from "lucide-react";
 
+interface GuildResources {
+  channels: Array<{ id: string; name: string; type: number }>;
+  roles: Array<{ id: string; name: string; position: number }>;
+}
+
+interface WelcomeSettings {
+  enabled: boolean;
+  channelId: string | null;
+  embedTitle: string;
+  message: string;
+  embedColor: string;
+  autoRoleId: string | null;
+  useEmbed: boolean;
+  leaveEnabled: boolean;
+  leaveChannelId: string | null;
+  leaveMessage: string;
+}
+
+const saveErrorMessages: Record<string, string> = {
+  INVALID_CONFIG: "Certaines valeurs sont invalides. Vérifiez les champs puis réessayez.",
+  INVALID_CHANNEL_ID: "Un salon sélectionné n'existe plus sur ce serveur.",
+  INVALID_CHANNEL_TYPE: "Un des salons sélectionnés n'est pas un salon textuel valide.",
+  INVALID_ROLE_ID: "Un rôle sélectionné n'existe plus sur ce serveur.",
+  BOT_CANNOT_ASSIGN_ROLE: "Le bot ne peut pas attribuer ce rôle : vérifiez Gérer les rôles et la hiérarchie.",
+  BOT_MISSING_CHANNEL_PERMISSIONS: "Le bot n'a pas les permissions nécessaires dans ce salon.",
+  BOT_MISSING_MANAGE_CHANNELS: "Le bot doit avoir la permission Gérer les salons pour utiliser cette catégorie.",
+  DISCORD_UNAVAILABLE: "Discord ne répond pas actuellement. Réessayez plus tard.",
+  FORBIDDEN: "Vous n'avez pas la permission d'administrer ce serveur.",
+  SESSION_EXPIRED: "Votre session Discord a expiré. Reconnectez-vous.",
+  BOT_NOT_IN_GUILD: "Le bot n'est plus présent sur ce serveur.",
+};
+
 export default function WelcomeConfigPage({ params }: { params: { guildId: string } }) {
-  const [enabled, setEnabled] = useState(true);
-  const [channel, setChannel] = useState("general");
-  const [title, setTitle] = useState("Bienvenue sur le serveur !");
+  const [enabled, setEnabled] = useState(false);
+  const [channel, setChannel] = useState("");
+  const [title, setTitle] = useState("Nouveau membre !");
   const [message, setMessage] = useState(
-    "Bienvenue {user} sur **{server}** ! N'hésite pas à lire le règlement et à choisir tes rôles. Nous sommes maintenant {count} membres !"
+    "Bienvenue {user} sur le serveur **{server}** ! Nous sommes maintenant {count} membres."
   );
-  const [color, setColor] = useState("#5865F2");
-  const [autoRole, setAutoRole] = useState("membre");
-
-  const [leaveEnabled, setLeaveEnabled] = useState(true);
+  const [color, setColor] = useState("#F59E0B");
+  const [autoRole, setAutoRole] = useState("");
+  const [useEmbed, setUseEmbed] = useState(true);
+  const [leaveEnabled, setLeaveEnabled] = useState(false);
+  const [leaveChannel, setLeaveChannel] = useState("");
   const [leaveMessage, setLeaveMessage] = useState(
-    "Au revoir {user}... Nous espérons te revoir bientôt sur {server} !"
+    "Au revoir {user}... Nous espérons te revoir bientôt !"
   );
-
+  const [channels, setChannels] = useState<Array<{ id: string; name: string }>>([]);
+  const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const [settingsResponse, resourcesResponse] = await Promise.all([
+          fetch(`/api/guilds/${params.guildId}/welcome`, { cache: "no-store" }),
+          fetch(`/api/guilds/${params.guildId}/resources`, { cache: "no-store" }),
+        ]);
+        if (!settingsResponse.ok || !resourcesResponse.ok) {
+          throw new Error("Impossible de charger la configuration Discord.");
+        }
+
+        const [settings, resources] = await Promise.all([
+          settingsResponse.json() as Promise<WelcomeSettings>,
+          resourcesResponse.json() as Promise<GuildResources>,
+        ]);
+        if (!active) return;
+        setEnabled(settings.enabled);
+        setChannel(settings.channelId ?? "");
+        setTitle(settings.embedTitle);
+        setMessage(settings.message);
+        setColor(settings.embedColor);
+        setAutoRole(settings.autoRoleId ?? "");
+        setUseEmbed(settings.useEmbed);
+        setLeaveEnabled(settings.leaveEnabled);
+        setLeaveChannel(settings.leaveChannelId ?? "");
+        setLeaveMessage(settings.leaveMessage);
+        setChannels(resources.channels.filter((item) => item.type !== 4));
+        setRoles(resources.roles);
+      } catch {
+        if (active) setError("La configuration et les ressources du serveur n'ont pas pu être chargées.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [params.guildId]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaved(false);
+    setError("");
+    try {
+      const response = await fetch(`/api/guilds/${params.guildId}/welcome`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled,
+          channelId: channel || null,
+          embedTitle: title,
+          message,
+          embedColor: color,
+          autoRoleId: autoRole || null,
+          useEmbed,
+          leaveEnabled,
+          leaveChannelId: leaveChannel || null,
+          leaveMessage,
+        }),
+      });
+      if (!response.ok) {
+        const result: { error?: string } | null = await response.json().catch(() => null);
+        throw new Error(
+          (result?.error && saveErrorMessages[result.error]) || "La sauvegarde a échoué."
+        );
+      }
+      setSaved(true);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "La sauvegarde a échoué.");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // Preview formatting
   const previewText = message
     .replace("{user}", "@NouveauMembre")
     .replace("{server}", "Mon Serveur Discord")
@@ -39,6 +147,9 @@ export default function WelcomeConfigPage({ params }: { params: { guildId: strin
           Configurez l'accueil automatique des nouveaux membres avec un message ou un embed soigné.
         </p>
       </div>
+
+      {loading ? <p className="text-sm text-zinc-400">Chargement des paramètres et des ressources Discord…</p> : null}
+      {error ? <p role="alert" className="text-sm text-rose-400">{error}</p> : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Formulaire de configuration */}
@@ -72,9 +183,8 @@ export default function WelcomeConfigPage({ params }: { params: { guildId: strin
                     onChange={(e) => setChannel(e.target.value)}
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600"
                   >
-                    <option value="general">#💬-bienvenue</option>
-                    <option value="general-chat">#general</option>
-                    <option value="arrivees">#👋-arrivees-departs</option>
+                    <option value="">Sélectionner un salon</option>
+                    {channels.map((item) => <option key={item.id} value={item.id}>#{item.name}</option>)}
                   </select>
                 </div>
 
@@ -89,6 +199,16 @@ export default function WelcomeConfigPage({ params }: { params: { guildId: strin
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600"
                   />
                 </div>
+
+                <label className="flex items-center gap-3 text-sm text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={useEmbed}
+                    onChange={(e) => setUseEmbed(e.target.checked)}
+                    className="h-4 w-4 rounded border-zinc-700 bg-zinc-950 text-amber-500"
+                  />
+                  Envoyer le message sous forme d'embed
+                </label>
 
                 <div>
                   <label className="block text-xs font-medium text-zinc-300 mb-1.5">
@@ -130,9 +250,8 @@ export default function WelcomeConfigPage({ params }: { params: { guildId: strin
                       onChange={(e) => setAutoRole(e.target.value)}
                       className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600"
                     >
-                      <option value="none">Aucun</option>
-                      <option value="membre">@Membre</option>
-                      <option value="citoyen">@Citoyen</option>
+                      <option value="">Aucun</option>
+                      {roles.map((role) => <option key={role.id} value={role.id}>@{role.name}</option>)}
                     </select>
                   </div>
                 </div>
@@ -156,7 +275,15 @@ export default function WelcomeConfigPage({ params }: { params: { guildId: strin
             </div>
 
             {leaveEnabled && (
-              <div>
+              <div className="space-y-3">
+                <select
+                  value={leaveChannel}
+                  onChange={(e) => setLeaveChannel(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600"
+                >
+                  <option value="">Sélectionner un salon</option>
+                  {channels.map((item) => <option key={item.id} value={item.id}>#{item.name}</option>)}
+                </select>
                 <textarea
                   rows={2}
                   value={leaveMessage}
@@ -169,10 +296,11 @@ export default function WelcomeConfigPage({ params }: { params: { guildId: strin
 
           <button
             onClick={handleSave}
+            disabled={loading || saving || Boolean(error)}
             className="w-full inline-flex items-center justify-center gap-2 py-3 px-6 rounded-xl bg-zinc-100 hover:bg-white text-zinc-950 font-semibold text-sm transition"
           >
             {saved ? <Check className="w-4 h-4 text-emerald-600" /> : <Save className="w-4 h-4" />}
-            <span>{saved ? "Paramètres enregistrés !" : "Sauvegarder les modifications"}</span>
+            <span>{saving ? "Enregistrement…" : saved ? "Paramètres enregistrés !" : "Sauvegarder les modifications"}</span>
           </button>
         </div>
 
@@ -201,18 +329,19 @@ export default function WelcomeConfigPage({ params }: { params: { guildId: strin
             </div>
 
             {/* Embed box */}
-            <div
-              className="bg-[#2b2d31] rounded-lg p-4 border-l-4 space-y-2 text-sm"
-              style={{ borderLeftColor: color }}
-            >
-              <h4 className="font-bold text-white text-base">{title}</h4>
-              <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed whitespace-pre-line">
-                {previewText}
-              </p>
-              <div className="pt-2 border-t border-zinc-700/40 text-[11px] text-zinc-400">
-                Nous sommes maintenant 143 membres !
+            {useEmbed ? (
+              <div
+                className="bg-[#2b2d31] rounded-lg p-4 border-l-4 space-y-2 text-sm"
+                style={{ borderLeftColor: color }}
+              >
+                <h4 className="font-bold text-white text-base">{title}</h4>
+                <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed whitespace-pre-line">
+                  {previewText}
+                </p>
               </div>
-            </div>
+            ) : (
+              <p className="whitespace-pre-line text-sm">{previewText}</p>
+            )}
           </div>
         </div>
       </div>

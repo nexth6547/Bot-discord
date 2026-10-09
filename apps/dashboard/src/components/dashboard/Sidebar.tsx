@@ -17,9 +17,14 @@ import {
 interface SidebarProps {
   guildId: string;
   guildName?: string;
+  guildIcon?: string | null;
 }
 
-export function Sidebar({ guildId, guildName = "Mon Serveur" }: SidebarProps) {
+export function Sidebar({
+  guildId,
+  guildName = "Mon Serveur",
+  guildIcon,
+}: SidebarProps) {
   const pathname = usePathname();
 
   const links = [
@@ -72,8 +77,13 @@ export function Sidebar({ guildId, guildName = "Mon Serveur" }: SidebarProps) {
         </Link>
 
         <div className="flex items-center gap-3 px-2 py-1">
-          <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700/60 flex items-center justify-center font-bold text-sm text-zinc-200">
-            {guildName.slice(0, 2).toUpperCase()}
+          <div
+            aria-label={guildName}
+            role="img"
+            className="w-10 h-10 rounded-xl bg-zinc-800 bg-cover bg-center border border-zinc-700/60 flex items-center justify-center font-bold text-sm text-zinc-200"
+            style={guildIcon ? { backgroundImage: `url(${guildIcon})` } : undefined}
+          >
+            {!guildIcon && guildName.slice(0, 2).toUpperCase()}
           </div>
           <div className="truncate">
             <h2 className="text-sm font-semibold text-zinc-100 truncate">{guildName}</h2>
