@@ -61,6 +61,7 @@ La connexion OAuth avec un vrai compte, l’accès aux serveurs réels et les co
 - [x] Charger dans Next.js les variables du `.env` à la racine du monorepo, y compris `NEXT_PUBLIC_DISCORD_CLIENT_ID` au build du dashboard.
 - [ ] Remplacer `prisma db push` comme procédure de production par des migrations versionnées, avec une procédure documentée de sauvegarde et restauration SQLite.
 - [ ] Garantir qu’une base fraîche peut être initialisée automatiquement et que le bot et le dashboard attendent une base prête avant de traiter les requêtes.
+- [x] Charger explicitement le `.env` racine pour les commandes Prisma exécutées depuis le workspace database ; afficher une erreur claire si `DATABASE_URL` manque.
 - [ ] Ajouter des tests automatisés : permissions et autorisations API, persistance des réglages, calcul XP/cooldown, modération, tickets, rôles interactifs et handlers d’événements.
 - [ ] Ajouter des scripts de test et de vérification des types/lint dans le monorepo, puis une CI qui exécute installation verrouillée, tests et builds sur chaque changement.
 - [ ] Tester sur un serveur Discord de test avec des permissions minimales, des rôles proches de la hiérarchie du bot et des salons supprimés/renommés.

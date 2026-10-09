@@ -7,6 +7,18 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.16] - 2026-10-09 - Chargement de DATABASE_URL pour Prisma
+
+### Corrigé [Effectué]
+- **Commandes Prisma** : les scripts `generate`, `push` et `studio` chargent maintenant explicitement le `.env` racine du monorepo, même lorsque pnpm exécute le script depuis `packages/database`.
+- **Configuration absente** : `push` et `studio` affichent un message explicite lorsque `DATABASE_URL` n'est défini ni dans le `.env` racine ni dans l'environnement.
+
+### Notes Techniques
+- Ajout de `dotenv` aux dépendances de développement de `@bot/database` et d'un lanceur CLI portable Windows/Linux ; les variables déjà définies par le processus gardent la priorité sur le fichier `.env`.
+- **Validation** : `prisma validate` via le lanceur depuis le workspace, `pnpm db:generate` et `pnpm build` réussis ; `db push` non exécuté pour ne pas modifier la base locale sans confirmation.
+
+---
+
 ## [1.0.15] - 2026-10-09 - Fiabilisation du cycle de vie des tickets
 
 ### Modifié [Effectué]
