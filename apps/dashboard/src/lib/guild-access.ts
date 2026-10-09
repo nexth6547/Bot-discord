@@ -431,7 +431,7 @@ export async function validateGuildReferences(
       }
     }
 
-    const assignableRoleIds = [values.autoRoleId, values.muteRoleId].filter(
+    const assignableRoleIds = [values.autoRoleId].filter(
       (roleId): roleId is string => typeof roleId === "string"
     );
     if (assignableRoleIds.length > 0) {

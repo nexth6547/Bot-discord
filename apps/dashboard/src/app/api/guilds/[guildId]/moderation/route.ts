@@ -12,10 +12,6 @@ import {
 
 const fields = {
   modRoleId: { type: "snowflake", nullable: true },
-  adminRoleId: { type: "snowflake", nullable: true },
-  muteRoleId: { type: "snowflake", nullable: true },
-  logChannelId: { type: "snowflake", nullable: true },
-  autoModAntiSpam: { type: "boolean" },
   autoModAntiLink: { type: "boolean" },
 } as const;
 
@@ -30,6 +26,10 @@ export async function GET(
     await ensureGuildConfig(access.guild);
     const config = await prisma.modConfig.findUnique({
       where: { guildId: params.guildId },
+      select: {
+        modRoleId: true,
+        autoModAntiLink: true,
+      },
     });
 
     const sanctions = await prisma.sanction.findMany({
@@ -41,9 +41,6 @@ export async function GET(
     return NextResponse.json({
       config: config || {
         modRoleId: null,
-        adminRoleId: null,
-        muteRoleId: null,
-        autoModAntiSpam: false,
         autoModAntiLink: false,
       },
       sanctions,

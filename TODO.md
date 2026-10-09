@@ -12,7 +12,7 @@
 - [x] Le panneau de tickets du bot réutilise les textes enregistrés et sa fermeture est limitée à l'auteur, au support ou au personnel autorisé.
 - [x] L'invitation du bot ne demande plus la permission Administrator ; les échecs de suppression Auto-Mod ne sont plus présentés comme des succès.
 
-Ces corrections ne valident pas les parcours Discord réels et ne remplacent pas les éléments encore ouverts ci-dessous. Les pages Accueil/Départ sont désormais reliées à l'API ; les autres formulaires du dashboard affichent encore des données de démonstration et ne sauvegardent pas toutes leurs valeurs. Ne pas considérer les critères de livraison comme atteints.
+Ces corrections ne valident pas les parcours Discord réels et ne remplacent pas les éléments encore ouverts ci-dessous. Les pages de configuration actuellement livrées sont reliées à leurs API et données réelles ; les parcours Discord réels, les contrôles d'erreur exhaustifs et les éléments encore ouverts ci-dessous restent à valider. Ne pas considérer les critères de livraison comme atteints.
 
 ## Déjà validé
 
@@ -30,23 +30,24 @@ La connexion OAuth avec un vrai compte, l’accès aux serveurs réels et les co
 - [x] Compléter la validation des écritures par le calcul des permissions effectives du bot (rôles cumulés et overwrites @everyone/rôles/membre), avec les permissions d'envoi/embeds, de gestion des salons et de hiérarchie d'attribution nécessaires aux références utilisées.
 - [x] Gérer l’expiration/révocation du jeton OAuth et demander une reconnexion claire plutôt que laisser échouer le chargement.
 - [ ] Remplacer les valeurs locales et boutons de sauvegarde simulés de chaque onglet par les valeurs de l’API et des enregistrements Prisma :
-  - [ ] Vue d’ensemble : supprimer les compteurs fictifs (membres, sanctions, tickets, XP), afficher des données réelles avec leur source et leur date d’actualisation.
-  - [ ] Paramètres généraux : charger et sauvegarder les valeurs réelles. Le préfixe et la langue sont actuellement présentés dans l’interface mais ne pilotent pas les commandes du bot ; les implémenter réellement ou retirer ces réglages.
+  - [x] Vue d’ensemble : supprimer les compteurs fictifs (membres, sanctions, tickets, XP), afficher des données réelles avec leur source et leur date d’actualisation.
+  - [x] Paramètres généraux : retirer les contrôles du préfixe et de la langue tant qu'ils ne pilotent pas réellement les commandes du bot.
   - [x] Accueil/départ : brancher lecture et sauvegarde, utiliser les vrais salons et rôles Discord et afficher les vraies valeurs initiales.
-  - [ ] Modération : charger/sauvegarder la configuration et l’historique réel des sanctions ; retirer les lignes d’exemple.
-  - [ ] Journaux : charger/sauvegarder les salons réels et ne pas annoncer les catégories vocales/rôles tant que leurs événements ne sont pas traités.
-  - [ ] Tickets : charger/sauvegarder les paramètres et tickets réels ; publier ou mettre à jour le vrai panneau Discord depuis le dashboard.
-  - [ ] Niveaux : charger/sauvegarder les paramètres et le vrai classement XP ; retirer les membres d’exemple.
-  - [ ] Rôles interactifs : lister les panneaux réellement publiés ; créer/supprimer à la fois les messages Discord et leurs enregistrements. Ne jamais créer d’entrée avec `messageId: "pending"` comme si le bouton fonctionnait.
+  - [x] Modération : charger/sauvegarder la configuration et l’historique réel des sanctions ; retirer les lignes d’exemple.
+  - [x] Journaux : charger/sauvegarder les salons réels ; les catégories vocales et rôles ont leurs handlers d'événements.
+  - [x] Tickets : charger/sauvegarder les paramètres et tickets réels ; publier ou mettre à jour le vrai panneau Discord depuis le dashboard.
+  - [x] Niveaux : charger/sauvegarder les paramètres et le vrai classement XP ; retirer les membres d'exemple.
+  - [x] Rôles interactifs : lister les panneaux réellement publiés ; créer/supprimer à la fois les messages Discord et leurs enregistrements. Ne jamais créer d’entrée avec `messageId: "pending"` comme si le bouton fonctionnait.
 - [x] Ajouter une route serveur protégée fournissant les salons, catégories et rôles réels du serveur ; les sélecteurs de la page Accueil/Départ utilisent désormais les IDs Discord, les noms restent des libellés.
 - [x] Synchroniser aussi l’icône du serveur dans le layout et les pages ; le nom et l'icône sont chargés depuis Discord dans le layout.
 - [ ] Ajouter chargement, état vide, erreur, sauvegarde en cours et confirmation réelle pour chaque formulaire ; une sauvegarde affichée comme réussie doit avoir reçu une réponse serveur positive.
 
 ## P0 — Cohérence entre configuration et comportement du bot
 
-- [ ] Faire utiliser au panneau de tickets les valeurs `panelTitle`, `panelDescription` et `buttonText` enregistrées par le dashboard et mettre à jour le panneau Discord existant lors d'une sauvegarde ; `/ticket-setup` réutilise maintenant les valeurs enregistrées à son exécution.
-- [ ] Implémenter la protection anti-spam annoncée (seuil, fenêtre temporelle, sanction configurable), ou supprimer/masquer le réglage `autoModAntiSpam` tant qu’elle n’existe pas.
-- [ ] Implémenter et vérifier les contrôles liés aux rôles modérateur, administrateur et muet ; ces valeurs existent en base mais leur usage effectif doit être défini et testé.
+- [x] Faire utiliser au panneau de tickets les valeurs `panelTitle`, `panelDescription` et `buttonText` enregistrées par le dashboard et mettre à jour le panneau Discord existant lors d'une demande explicite de publication/mise à jour ; `/ticket-setup` réutilise aussi les valeurs enregistrées.
+- [x] Masquer le réglage anti-spam dans le dashboard tant que sa protection configurable n'est pas implémentée.
+- [x] Refuser aussi par API les réglages de modération et de journalisation sans effet ; ne retourner à la page Modération que les options effectivement prises en charge.
+- [x] Définir le périmètre des rôles de modération : `modRoleId` exempte uniquement du filtre anti-liens ; les commandes de sanction exigent toujours les permissions Discord appropriées et respectent la hiérarchie. Les champs historiques `adminRoleId` et `muteRoleId`, sans comportement implémenté, ne sont plus modifiables par l'API du dashboard.
 - [x] Ajouter les événements manquants pour que les journaux vocaux et de rôles fonctionnent réellement (états vocaux et changements de membre/rôle).
 - [ ] Vérifier les valeurs de bienvenue et de départ, les salons, l’auto-rôle et les couleurs de secours entre schéma, dashboard et handlers ; garder la palette Bloomera cohérente.
 - [ ] Vérifier le cycle de vie d’un serveur : création/synchronisation de la configuration à l’ajout du bot, mise à jour du nom/icône, traitement du retrait du bot et nettoyage/archivage des données associées.

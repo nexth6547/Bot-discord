@@ -7,7 +7,31 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.10] - 2026-10-09 - Cohérence des options API
+
+### Corrigé [Effectué]
+- **API de modération** : les options anti-spam, rôle administrateur, rôle muet et salon de journaux, non consommées par le bot, ne peuvent plus être enregistrées comme si elles fonctionnaient ; la lecture ne retourne que le rôle modérateur utilisé et le filtre anti-liens.
+- **Permissions de modération** : le rôle modérateur reste une exemption du filtre anti-liens, pas un substitut aux permissions Discord ; les commandes de sanction conservent leurs permissions Discord et leurs vérifications de hiérarchie.
+- **API des tickets** : le salon de journaux non consommé par le bot n'est plus accepté lors de l'enregistrement des paramètres ou de la publication du panneau.
+- **Validation des rôles** : retrait de la validation d'un rôle muet qui n'est plus modifiable depuis les API du dashboard.
+
+### Notes Techniques
+- Les colonnes Prisma héritées restent inchangées afin d'éviter une migration destructive ; elles ne sont plus modifiables par ces API.
+- **Validation** : `git diff --check` et `pnpm build` réussis après ces ajustements.
+
+---
+
 ## [1.0.9] - 2026-10-09 - Connexion des réglages Accueil/Départ
+
+### Modifié [Effectué]
+- **Journaux dashboard** : connexion à l'API Prisma, chargement des salons Discord réels, sélection par identifiant, catégories limitées aux événements implémentés et retour explicite des erreurs/sauvegardes.
+- **Modération dashboard** : chargement/sauvegarde de la configuration et de l'historique réel des sanctions ; retrait des entrées de démonstration et masquage de l'option anti-spam non implémentée.
+- **Niveaux dashboard** : chargement et persistance des paramètres et affichage du vrai classement XP, avec états d'erreur, vide, chargement et sauvegarde.
+- **Rôles interactifs** : chargement des panneaux publiés, création d'un vrai message Discord avec bouton compatible avec le handler du bot, puis persistance de son ID ; suppression du message et de la ligne DB uniquement après confirmation Discord.
+- **Tickets dashboard** : configuration et liste réelle des tickets ouverts, publication/mise à jour du panneau Discord avec les textes persistés et déplacement du panneau avec suppression de l'ancien message lorsque possible.
+- **Options non branchées** : retrait de l'interface de journalisation des tickets, qui n'est pas encore consommée par le bot.
+- **Vue d'ensemble** : suppression des chiffres de démonstration ; les comptes de sanctions/tickets/XP viennent de SQLite et le nombre de membres est récupéré comme estimation depuis Discord, avec source et date d'actualisation.
+- **Réglages généraux** : retrait des contrôles préfixe/langue qui n'étaient pas consommés par les commandes slash.
 
 ### Ajouté [Effectué]
 - **Ressources Discord** : route protégée `/api/guilds/[guildId]/resources` qui expose les salons et les rôles assignables réellement disponibles sur le serveur.
