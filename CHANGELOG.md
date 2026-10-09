@@ -12,8 +12,11 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 ### Ajouté [Effectué]
 - **Environnement local** : création d'un fichier `.env` ignoré par Git, basé sur `.env.example` et contenant uniquement des valeurs indicatives à remplacer par les identifiants Discord réels.
 
+### Corrigé [Effectué]
+- **Secret NextAuth local** : remplacement de la valeur d'exemple par un secret aléatoire cryptographique généré localement ; sa valeur n'est ni affichée ni ajoutée au dépôt.
+
 ### Notes Techniques
-- Aucun jeton ni secret réel n'a été ajouté ; les valeurs de démonstration doivent être remplacées avant le démarrage.
+- Les identifiants Discord du fichier local sont renseignés ; le fichier `.env` reste ignoré par Git.
 
 ---
 
