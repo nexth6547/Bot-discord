@@ -7,6 +7,22 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.13] - 2026-10-09 - Synchronisation du cycle de vie serveur
+
+### Ajouté [Effectué]
+- **Synchronisation serveur** : création/réconciliation idempotente de la configuration de chaque serveur à l'ajout du bot et au démarrage ; actualisation du nom et de l'icône sur `guildUpdate`.
+- **Retrait du bot** : journalisation de la perte d'accès sans suppression des données du serveur, en attente d'une politique de rétention explicite.
+
+### Corrigé [Effectué]
+- **Bienvenue/départ** : alignement des valeurs de repli API sur les valeurs par défaut Prisma et refus d'activer un message sans salon d'envoi sélectionné.
+- **Commandes de configuration** : vérification préalable des permissions du bot dans le salon, de `ManageChannels` pour les tickets et de `ManageRoles` pour les panneaux de rôles, afin d'éviter de publier des contrôles inopérants.
+
+### Notes Techniques
+- **Validation** : build complet des workspaces réussi ; diagnostics ciblés et `git diff --check` réussis.
+- **Données** : aucune suppression ni migration Prisma ; les configurations et données associées sont conservées quand le bot quitte un serveur.
+
+---
+
 ## [1.0.12] - 2026-10-09 - Mise à jour des commandes documentées
 
 ### Modifié [Effectué]

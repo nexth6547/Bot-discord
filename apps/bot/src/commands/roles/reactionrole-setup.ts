@@ -56,6 +56,25 @@ export const reactionRoleSetupCommand: Command = {
       interaction.guild.members.fetchMe(),
       interaction.guild.members.fetch(interaction.user.id),
     ]);
+    if (!botMember.permissions.has(PermissionFlagsBits.ManageRoles)) {
+      await interaction.editReply({
+        content: "❌ Le bot doit avoir la permission Gérer les rôles pour attribuer les rôles de ce panneau.",
+      });
+      return;
+    }
+    const channelPermissions = channel.permissionsFor(botMember);
+    if (
+      !channelPermissions?.has([
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.EmbedLinks,
+      ])
+    ) {
+      await interaction.editReply({
+        content: "❌ Le bot doit pouvoir voir ce salon, y envoyer des messages et intégrer des liens.",
+      });
+      return;
+    }
     if (
       role.id === interaction.guild.id ||
       role.managed ||

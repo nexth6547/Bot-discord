@@ -23,6 +23,8 @@ interface WelcomeSettings {
 
 const saveErrorMessages: Record<string, string> = {
   INVALID_CONFIG: "Certaines valeurs sont invalides. Vérifiez les champs puis réessayez.",
+  WELCOME_CHANNEL_REQUIRED: "Sélectionnez un salon pour le message de bienvenue.",
+  LEAVE_CHANNEL_REQUIRED: "Sélectionnez un salon pour le message de départ.",
   INVALID_CHANNEL_ID: "Un salon sélectionné n'existe plus sur ce serveur.",
   INVALID_CHANNEL_TYPE: "Un des salons sélectionnés n'est pas un salon textuel valide.",
   INVALID_ROLE_ID: "Un rôle sélectionné n'existe plus sur ce serveur.",

@@ -40,14 +40,14 @@ export async function GET(
       config || {
         enabled: false,
         channelId: null,
-        message: "Bienvenue {user} sur **{server}** !",
+        message: "Bienvenue {user} sur le serveur **{server}** ! Nous sommes maintenant {count} membres.",
         useEmbed: true,
         embedColor: "#F59E0B",
-        embedTitle: "Bienvenue !",
+        embedTitle: "Nouveau membre !",
         autoRoleId: null,
         leaveEnabled: false,
         leaveChannelId: null,
-        leaveMessage: "Au revoir {user}...",
+        leaveMessage: "Au revoir {user}... Nous espérons te revoir bientôt !",
       }
     );
   } catch (error) {
@@ -67,6 +67,12 @@ export async function POST(
     const body = await readJsonObject(request);
     const data = body && validateConfig(body, fields);
     if (!data) return invalidConfig();
+    if (data.enabled === true && !data.channelId) {
+      return NextResponse.json({ error: "WELCOME_CHANNEL_REQUIRED" }, { status: 400 });
+    }
+    if (data.leaveEnabled === true && !data.leaveChannelId) {
+      return NextResponse.json({ error: "LEAVE_CHANNEL_REQUIRED" }, { status: 400 });
+    }
     const referenceError = await validateGuildReferences(params.guildId, data);
     if (referenceError) return referenceError;
 

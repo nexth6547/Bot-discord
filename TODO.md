@@ -49,9 +49,11 @@ La connexion OAuth avec un vrai compte, l’accès aux serveurs réels et les co
 - [x] Refuser aussi par API les réglages de modération et de journalisation sans effet ; ne retourner à la page Modération que les options effectivement prises en charge.
 - [x] Définir le périmètre des rôles de modération : `modRoleId` exempte uniquement du filtre anti-liens ; les commandes de sanction exigent toujours les permissions Discord appropriées et respectent la hiérarchie. Les champs historiques `adminRoleId` et `muteRoleId`, sans comportement implémenté, ne sont plus modifiables par l'API du dashboard.
 - [x] Ajouter les événements manquants pour que les journaux vocaux et de rôles fonctionnent réellement (états vocaux et changements de membre/rôle).
-- [ ] Vérifier les valeurs de bienvenue et de départ, les salons, l’auto-rôle et les couleurs de secours entre schéma, dashboard et handlers ; garder la palette Bloomera cohérente.
-- [ ] Vérifier le cycle de vie d’un serveur : création/synchronisation de la configuration à l’ajout du bot, mise à jour du nom/icône, traitement du retrait du bot et nettoyage/archivage des données associées.
-- [ ] Compléter les contrôles de toutes les commandes slash sur les cibles invalides, la hiérarchie et les permissions du bot ; les commandes sensibles revalident désormais les permissions du membre, et les sanctions vérifient la hiérarchie de leur cible.
+- [x] Vérifier la cohérence des valeurs par défaut bienvenue/départ, la sélection des salons textuels, les rôles auto-attribuables sous la hiérarchie du bot et la couleur de secours ambre entre schéma, API, dashboard et handlers.
+- [x] Créer/synchroniser la configuration serveur à l'ajout et au démarrage ; actualiser le nom et l'icône lors des changements de serveur.
+- [ ] À la perte d'accès à un serveur, conserver ses données et journaliser l'événement ; définir une politique d'archivage/rétention avant toute purge.
+- [x] Vérifier les contrôles des commandes slash sur les cibles, la hiérarchie et les permissions du bot ; `/ticket-setup` et `/reactionrole-setup` refusent maintenant de publier si le bot ne peut pas exécuter les actions liées (permissions de gestion et permissions de salon). Les sanctions vérifient les permissions du membre, la hiérarchie et les capacités du bot.
+- [ ] Tester les commandes sur un serveur Discord de test avec des permissions minimales, des rôles proches de la hiérarchie du bot et des cibles absentes/supprimées.
 
 ## P1 — Données, tests et qualité
 

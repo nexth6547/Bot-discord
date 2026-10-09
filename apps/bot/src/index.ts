@@ -20,6 +20,8 @@ import { reactionRoleSetupCommand } from "./commands/roles/reactionrole-setup";
 // Événements
 import { onReady } from "./events/ready";
 import { onGuildCreate } from "./events/guildCreate";
+import { onGuildUpdate } from "./events/guildUpdate";
+import { onGuildDelete } from "./events/guildDelete";
 import { onGuildMemberAdd } from "./events/guildMemberAdd";
 import { onGuildMemberRemove } from "./events/guildMemberRemove";
 import { onMessageCreate } from "./events/messageCreate";
@@ -61,6 +63,8 @@ async function main() {
   // Enregistrement des écouteurs d'événements
   client.once("ready", () => onReady(client));
   client.on("guildCreate", onGuildCreate);
+  client.on("guildUpdate", onGuildUpdate);
+  client.on("guildDelete", onGuildDelete);
   client.on("guildMemberAdd", onGuildMemberAdd);
   client.on("guildMemberRemove", onGuildMemberRemove);
   client.on("guildMemberUpdate", onGuildMemberUpdate);

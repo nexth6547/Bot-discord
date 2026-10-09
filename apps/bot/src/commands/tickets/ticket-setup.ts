@@ -52,6 +52,26 @@ export const ticketSetupCommand: Command = {
       await interaction.editReply({ content: "❌ Ce salon textuel n'est plus disponible." });
       return;
     }
+    const botMember = await interaction.guild.members.fetchMe();
+    const channelPermissions = targetChannel.permissionsFor(botMember);
+    if (!botMember.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      await interaction.editReply({
+        content: "❌ Le bot doit avoir la permission Gérer les salons pour créer les salons de ticket.",
+      });
+      return;
+    }
+    if (
+      !channelPermissions?.has([
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.EmbedLinks,
+      ])
+    ) {
+      await interaction.editReply({
+        content: "❌ Le bot doit pouvoir voir ce salon, y envoyer des messages et intégrer des liens.",
+      });
+      return;
+    }
     const supportRole = interaction.options.getRole("role_support");
     const category = interaction.options.getChannel("categorie");
 

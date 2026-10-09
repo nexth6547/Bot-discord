@@ -1,9 +1,21 @@
 import { REST, Routes, ActivityType } from "discord.js";
 import { BotClient } from "../client";
 import { config } from "../config";
+import { syncGuildConfig } from "../services/guildConfigService";
 
 export async function onReady(client: BotClient) {
   console.log(`🤖 Bot connecté en tant que ${client.user?.tag} (${client.user?.id})`);
+
+  for (const guild of client.guilds.cache.values()) {
+    try {
+      await syncGuildConfig(guild);
+    } catch (err) {
+      console.error(
+        `❌ Erreur lors de la synchronisation du serveur ${guild.id} au démarrage :`,
+        err
+      );
+    }
+  }
 
   // Définir le statut du bot
   client.user?.setPresence({
