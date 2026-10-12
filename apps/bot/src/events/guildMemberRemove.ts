@@ -19,7 +19,10 @@ export async function onGuildMemberRemove(member: GuildMember | PartialGuildMemb
           .replace(/{server}/g, guild.name)
           .replace(/{count}/g, guild.memberCount.toString());
 
-        await channel.send({ content: formattedMsg });
+        await channel.send({
+          content: formattedMsg,
+          allowedMentions: { parse: [] },
+        });
       }
     }
 

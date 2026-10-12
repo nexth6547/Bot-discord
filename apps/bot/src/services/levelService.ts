@@ -130,7 +130,10 @@ export class LevelService {
           .replace("{level}", newLevel.toString())
           .replace("{server}", message.guild.name);
 
-        await announceChannel.send({ content: announceMsg });
+        await announceChannel.send({
+          content: announceMsg,
+          allowedMentions: { parse: [], users: [userId] },
+        });
       }
     } catch (err) {
       console.error("[LevelService] Erreur lors de l'attribution d'XP:", err);

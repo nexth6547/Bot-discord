@@ -7,6 +7,18 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.19] - 2026-10-12 - Encadrement des mentions des messages automatiques
+
+### Corrigé [Effectué]
+- **Bienvenue et annonces XP** : les messages personnalisés peuvent notifier uniquement le membre concerné ; les mentions générales et de rôles ne sont pas autorisées.
+- **Départ** : aucune mention n'est autorisée dans le message personnalisé.
+
+### Notes Techniques
+- Les envois Discord des événements d'arrivée, de départ et de montée de niveau définissent explicitement `allowedMentions`.
+- **Validation** : `pnpm build` réussi ; les essais de notification réelle sur un serveur Discord restent à faire.
+
+---
+
 ## [1.0.18] - 2026-10-12 - Préparation du déploiement hébergé
 
 ### Modifié [Effectué]

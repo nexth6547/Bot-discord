@@ -66,7 +66,8 @@ La connexion OAuth avec un vrai compte, l’accès aux serveurs réels et les co
 - [ ] Ajouter des scripts de test et de vérification des types/lint dans le monorepo, puis une CI qui exécute installation verrouillée, tests et builds sur chaque changement.
 - [ ] Tester sur un serveur Discord de test avec des permissions minimales, des rôles proches de la hiérarchie du bot et des salons supprimés/renommés.
 - [ ] Vérifier les limites Discord : délais d’interaction, rate limits, contenu d’embed, permissions manquantes, utilisateurs/canaux partiels et réponses après une interaction déjà différée.
-- [ ] Définir et appliquer une politique de mentions autorisées pour les messages personnalisés de bienvenue, départ et annonces XP ; empêcher les mentions générales ou de rôles non souhaitées et tester le comportement.
+- [x] Définir et appliquer une politique de mentions autorisées pour les messages personnalisés de bienvenue, départ et annonces XP : les messages ne peuvent notifier que le membre concerné pour la bienvenue et l'annonce XP ; aucune mention pour le départ, et aucune mention générale ou de rôle.
+- [ ] Tester sur Discord que les mentions personnalisées de bienvenue, départ et annonces XP ne notifient aucun rôle ou tout le monde ; les essais réels nécessitent un serveur de test.
 - [ ] Ajouter des tests de parcours bout en bout : une sauvegarde refusée par Discord ne doit pas afficher de succès, les salons/rôles supprimés doivent produire une erreur exploitable, et les erreurs d’interaction après expiration doivent être journalisées clairement.
 - [ ] Encadrer la collecte et la conservation des données : contenu des messages journalisés, sanctions, données XP, suppression à la demande et durée de rétention.
 

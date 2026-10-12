@@ -41,9 +41,16 @@ export async function onGuildMemberAdd(member: GuildMember) {
             .setFooter({ text: `Nous sommes maintenant ${guild.memberCount} membres !` })
             .setTimestamp();
 
-          await channel.send({ content: `<@${member.id}>`, embeds: [embed] });
+          await channel.send({
+            content: `<@${member.id}>`,
+            embeds: [embed],
+            allowedMentions: { parse: [], users: [member.id] },
+          });
         } else {
-          await channel.send({ content: formattedMsg });
+          await channel.send({
+            content: formattedMsg,
+            allowedMentions: { parse: [], users: [member.id] },
+          });
         }
       }
     }
