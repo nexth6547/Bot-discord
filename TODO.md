@@ -1,104 +1,110 @@
 # Bloomera — feuille de route vers un fonctionnement complet
 
-État audité le 9 octobre 2026. « 100 % opérationnel » signifie que les fonctions présentées sont réellement branchées, sécurisées, testées sur Discord et redémarrent sans intervention manuelle.
+État revu le 12 octobre 2026. « 100 % opérationnel » signifie que les fonctions présentées sont branchées, sécurisées, validées par les tests applicables et, pour les parcours Discord/OAuth/déploiement, essayées dans leur environnement réel.
 
-## Vérifié et corrigé lors de l'audit du 8 octobre
+## Comment lire les statuts
 
-- [x] Les pages de configuration d'un serveur et les routes API par serveur vérifient la session, les permissions Discord et la présence du bot.
-- [x] Les écritures de configuration n'acceptent plus les champs Prisma arbitraires ; les types, tailles et formats des identifiants sont validés, ainsi que l'appartenance des salons/rôles au serveur.
-- [x] Le jeton OAuth Discord est renouvelé avec son jeton de rafraîchissement ; les échecs sont journalisés sans divulguer de secrets.
-- [x] La suppression d'un panneau de rôle est limitée au serveur autorisé et supprime également son message Discord ; l'API n'invente plus de message `pending`.
-- [x] Les commandes sensibles revalident les permissions au moment de l'exécution ; les sanctions vérifient la hiérarchie des rôles et les boutons de rôle vérifient leur enregistrement et la hiérarchie du bot.
-- [x] Le panneau de tickets du bot réutilise les textes enregistrés et sa fermeture est limitée à l'auteur, au support ou au personnel autorisé.
-- [x] L'invitation du bot ne demande plus la permission Administrator ; les échecs de suppression Auto-Mod ne sont plus présentés comme des succès.
+- `[x]` : l'étape est confirmée par les validations indiquées ; la preuve doit être reproductible (commande, test ou parcours daté).
+- `[ ]` : il reste une réalisation ou une validation à faire. Si le code est déjà présent, la mention **Implémenté ; validation restante** évite de confondre état du code et confirmation du comportement.
+- Une validation Discord réelle ou de production est une étape distincte : son indisponibilité ne bloque pas le travail local, mais elle empêche de déclarer le parcours concerné entièrement confirmé.
 
-Ces corrections ne valident pas les parcours Discord réels et ne remplacent pas les éléments encore ouverts ci-dessous. Les pages de configuration actuellement livrées sont reliées à leurs API et données réelles ; les parcours Discord réels, les contrôles d'erreur exhaustifs et les éléments encore ouverts ci-dessous restent à valider. Ne pas considérer les critères de livraison comme atteints.
+## Correctifs déjà présents — validation finale restante
 
-## Déjà validé
+- [ ] Les pages de configuration d'un serveur et les routes API par serveur vérifient la session, les permissions Discord et la présence du bot. **Implémenté ; validation restante :** tester sans session (`401`), avec un compte sans permission (`403`), avec un administrateur autorisé, puis bot absent (`403`/erreur prévue), sur chaque page et route.
+- [ ] Les écritures de configuration refusent les champs Prisma arbitraires et valident types, tailles, formats d'identifiants et appartenance des salons/rôles au serveur. **Implémenté ; validation restante :** tests d'API avec champ inconnu, valeur mal typée, snowflake invalide, salon/rôle d'un autre serveur et références supprimées ; vérifier qu'aucune donnée n'est écrite en cas de refus.
+- [ ] Le jeton OAuth Discord est renouvelé avec son jeton de rafraîchissement et les échecs sont journalisés sans divulguer de secrets. **Implémenté ; validation restante :** tester jeton valide, expiré, révoqué et réponse OAuth invalide ; vérifier la reconnexion demandée et l'absence de tokens dans les logs.
+- [ ] La suppression d'un panneau de rôle est limitée au serveur autorisé et supprime son message Discord ; l'API n'invente pas de message `pending`. **Implémenté ; validation restante :** vérifier suppression réussie, mauvais serveur, message déjà supprimé et refus/erreur Discord ; comparer réponse API, message et enregistrement DB.
+- [ ] Les commandes sensibles revérifient les permissions à l'exécution ; les sanctions contrôlent hiérarchie et cibles, et les boutons de rôle vérifient enregistrement et hiérarchie du bot. **Implémenté ; validation restante :** suivre les scénarios de permissions, rôles et cibles décrits dans « Vérifications Discord requises » ci-dessous.
+- [ ] Le panneau de tickets réutilise les textes configurés et sa fermeture est limitée à l'auteur, au support ou au personnel autorisé. **Implémenté ; validation restante :** modifier puis republier le panneau ; essayer fermeture par auteur, support, personnel non autorisé et tiers ; vérifier les états Discord/DB après chaque réponse.
+- [ ] L'invitation du bot ne demande pas `Administrator` et un échec de suppression Auto-Mod n'est pas présenté comme un succès. **Implémenté ; validation restante :** contrôler les scopes/permissions du lien produit et provoquer un refus Discord de suppression pour vérifier le retour et le journal d'erreur.
 
-- [x] Monorepo installé avec pnpm, client Prisma généré automatiquement après installation.
-- [x] Build réussi pour `@bot/database`, `@bot/core` et `@bot/dashboard`.
-- [x] Sélection du dashboard alimentée par OAuth Discord, limitée aux serveurs où le compte a les permissions requises ; la route répond `401` sans session.
-- [x] Présence du bot dans la liste déterminée à partir des configurations enregistrées en base.
+Ces vérifications ne sont pas remplacées par un build réussi. Ne pas considérer les critères de livraison comme atteints tant que les parcours réels pertinents ne sont pas validés.
 
-La connexion OAuth avec un vrai compte, l’accès aux serveurs réels et les commandes Discord n’ont pas encore été validés de bout en bout dans cette session.
+## Installation et démarrage
+
+- [ ] Une installation pnpm reproductible et la génération automatique du client Prisma après installation fonctionnent depuis un clone propre. **Implémenté en partie ; validation restante :** cloner dans un répertoire vierge, exécuter `pnpm install --frozen-lockfile`, vérifier le hook Prisma puis `pnpm build`, sans dépendre de fichiers locaux ignorés.
+- [x] Le build des workspaces `@bot/database`, `@bot/core` et `@bot/dashboard` passe. **Preuve :** `pnpm build`, réussi le 12 octobre 2026 après les changements de validation de configuration. À refaire après tout changement ultérieur.
+- [ ] La sélection du dashboard est alimentée par OAuth Discord et limitée aux serveurs où le compte a les permissions requises ; la route répond `401` sans session. **Implémenté ; validation restante :** parcours navigateur réel sans session, avec compte autorisé et non autorisé ; confirmer codes HTTP, liste affichée et absence de fuite d'autres serveurs.
+- [ ] La présence du bot dans la liste des serveurs est déterminée depuis la configuration en base. **Implémenté ; validation restante :** comparer serveurs où le bot est présent/absent aux données affichées, y compris après ajout et retrait du bot.
+
+La connexion OAuth avec un vrai compte, l'accès à des serveurs réels et les commandes Discord restent à confirmer ; leur absence ne bloque pas les tâches locales.
 
 ## P0 — Sécurité et parcours réels du dashboard
 
-- [x] Protéger toutes les pages `/dashboard/[guildId]` : session obligatoire, permission Discord `Administrator` ou `ManageGuild`, bot réellement présent sur le serveur.
-- [x] Appliquer la même autorisation à chaque route `/api/guilds/[guildId]`, y compris `GET`, `POST` et `DELETE` ; vérifier l’appartenance de l’objet supprimé au serveur demandé.
-- [x] Compléter la validation des écritures par le calcul des permissions effectives du bot (rôles cumulés et overwrites @everyone/rôles/membre), avec les permissions d'envoi/embeds, de gestion des salons et de hiérarchie d'attribution nécessaires aux références utilisées.
-- [x] Gérer l’expiration/révocation du jeton OAuth et demander une reconnexion claire plutôt que laisser échouer le chargement.
-- [ ] Remplacer les valeurs locales et boutons de sauvegarde simulés de chaque onglet par les valeurs de l’API et des enregistrements Prisma :
-  - [x] Vue d’ensemble : supprimer les compteurs fictifs (membres, sanctions, tickets, XP), afficher des données réelles avec leur source et leur date d’actualisation.
-  - [x] Paramètres généraux : retirer les contrôles du préfixe et de la langue tant qu'ils ne pilotent pas réellement les commandes du bot.
-  - [x] Accueil/départ : brancher lecture et sauvegarde, utiliser les vrais salons et rôles Discord et afficher les vraies valeurs initiales.
-  - [x] Modération : charger/sauvegarder la configuration et l’historique réel des sanctions ; retirer les lignes d’exemple.
-  - [x] Journaux : charger/sauvegarder les salons réels ; les catégories vocales et rôles ont leurs handlers d'événements.
-  - [x] Tickets : charger/sauvegarder les paramètres et tickets réels ; publier ou mettre à jour le vrai panneau Discord depuis le dashboard.
-  - [x] Niveaux : charger/sauvegarder les paramètres et le vrai classement XP ; retirer les membres d'exemple.
-  - [x] Rôles interactifs : lister les panneaux réellement publiés ; créer/supprimer à la fois les messages Discord et leurs enregistrements. Ne jamais créer d’entrée avec `messageId: "pending"` comme si le bouton fonctionnait.
-- [x] Ajouter une route serveur protégée fournissant les salons, catégories et rôles réels du serveur ; les sélecteurs de la page Accueil/Départ utilisent désormais les IDs Discord, les noms restent des libellés.
-- [x] Synchroniser aussi l’icône du serveur dans le layout et les pages ; le nom et l'icône sont chargés depuis Discord dans le layout.
-- [ ] Ajouter chargement, état vide, erreur, sauvegarde en cours et confirmation réelle pour chaque formulaire ; une sauvegarde affichée comme réussie doit avoir reçu une réponse serveur positive.
+- [ ] Protéger toutes les pages `/dashboard/[guildId]` : session obligatoire, permission Discord `Administrator` ou `ManageGuild`, bot présent sur le serveur. **Implémenté ; validation restante :** matrice de tests non connecté, membre sans permission, administrateur, bot absent et guild ID invalide, sur chaque page.
+- [ ] Appliquer la même autorisation à chaque route `/api/guilds/[guildId]`, y compris `GET`, `POST` et `DELETE`, et vérifier l'appartenance de l'objet supprimé au serveur demandé. **Implémenté ; validation restante :** répéter la matrice d'accès pour chaque méthode et chaque route ; tenter explicitement un ID d'objet appartenant à une autre guild.
+- [ ] Vérifier les permissions effectives du bot lors des écritures, avec rôles cumulés et overwrites `@everyone`/rôles/membre, pour l'envoi d'embeds, la gestion des salons et la hiérarchie des rôles. **Implémenté ; validation restante :** tests unitaires des combinaisons allow/deny et essai sur serveur avec permissions minimales, overwrites contradictoires et rôle au-dessus/sous le bot.
+- [ ] En cas d'expiration/révocation du jeton OAuth, demander une reconnexion claire plutôt que laisser échouer le chargement. **Implémenté ; validation restante :** tester jeton expiré, révocation Discord, renouvellement réussi et refusé ; confirmer UI, code HTTP et logs sans secret.
+- [ ] Remplacer les valeurs locales et boutons de sauvegarde simulés de chaque onglet par les données d'API/Prisma :
+  - [ ] Vue d'ensemble : données réelles, source et date d'actualisation, aucun compteur fictif. **Implémenté ; validation restante :** comparer les compteurs affichés aux enregistrements/API, y compris base vide et erreur Discord.
+  - [ ] Paramètres généraux : aucun contrôle préfixe/langue sans effet réel sur les commandes. **Implémenté ; validation restante :** confirmer l'absence de ces contrôles et vérifier que le reste de la page ne prétend pas sauvegarder ces paramètres.
+  - [ ] Accueil/départ : lecture et sauvegarde réelles, sélecteurs alimentés par les salons/rôles Discord, valeurs initiales fidèles. **Implémenté ; validation restante :** lire, modifier, sauvegarder, recharger ; refuser salon/rôle supprimé ou inaccessible sans faux succès.
+  - [ ] Modération : configuration et historique des sanctions réels, aucune ligne d'exemple. **Implémenté ; validation restante :** comparer aux données DB, tester base vide, sauvegarde refusée et rechargement.
+  - [ ] Journaux : salons réels et événements vocaux/rôles effectivement traités. **Implémenté ; validation restante :** sauvegarder chaque salon puis générer les événements Discord correspondants ; vérifier destination et contenu sans journal fictif.
+  - [ ] Tickets : configuration et tickets réels ; publication/mise à jour du vrai panneau Discord. **Implémenté ; validation restante :** créer, publier, mettre à jour, recharger et fermer un ticket ; vérifier Discord et DB après succès et erreurs.
+  - [ ] Niveaux : paramètres et classement XP réels, aucun membre d'exemple. **Implémenté ; validation restante :** comparer classement et paramètres à la DB après messages de test ; vérifier état sans données.
+  - [ ] Rôles interactifs : panneaux réellement publiés ; création/suppression du message et de l'enregistrement associés, jamais de `messageId: "pending"`. **Implémenté ; validation restante :** publier, utiliser le bouton, supprimer puis comparer message Discord et DB ; couvrir échec de publication/suppression.
+- [ ] Fournir une route serveur protégée pour salons, catégories et rôles réels ; les sélecteurs bienvenue/départ utilisent des IDs Discord. **Implémenté ; validation restante :** vérifier autorisation, pagination/absence d'éléments, noms renommés et IDs supprimés ; confirmer la persistance des IDs sélectionnés.
+- [ ] Synchroniser nom et icône du serveur dans le layout et les pages. **Implémenté ; validation restante :** renommer/modifier l'icône sur un serveur de test, recharger toutes les pages et vérifier le rafraîchissement ainsi que l'état d'icône absente.
+- [ ] Pour chaque formulaire, gérer chargement, état vide, erreur, sauvegarde en cours et confirmation seulement après réponse positive du serveur. **À réaliser/compléter puis valider :** parcourir chaque formulaire et simuler API lente, vide, `4xx`, `5xx`, réponse Discord refusée et succès ; aucune confirmation de succès avant persistance confirmée.
 
 ## P0 — Cohérence entre configuration et comportement du bot
 
-- [x] Faire utiliser au panneau de tickets les valeurs `panelTitle`, `panelDescription` et `buttonText` enregistrées par le dashboard et mettre à jour le panneau Discord existant lors d'une demande explicite de publication/mise à jour ; `/ticket-setup` réutilise aussi les valeurs enregistrées.
-- [x] Masquer le réglage anti-spam dans le dashboard tant que sa protection configurable n'est pas implémentée.
-- [x] Refuser aussi par API les réglages de modération et de journalisation sans effet ; ne retourner à la page Modération que les options effectivement prises en charge.
-- [x] Définir le périmètre des rôles de modération : `modRoleId` exempte uniquement du filtre anti-liens ; les commandes de sanction exigent toujours les permissions Discord appropriées et respectent la hiérarchie. Les champs historiques `adminRoleId` et `muteRoleId`, sans comportement implémenté, ne sont plus modifiables par l'API du dashboard.
-- [x] Ajouter les événements manquants pour que les journaux vocaux et de rôles fonctionnent réellement (états vocaux et changements de membre/rôle).
-- [x] Vérifier la cohérence des valeurs par défaut bienvenue/départ, la sélection des salons textuels, les rôles auto-attribuables sous la hiérarchie du bot et la couleur de secours ambre entre schéma, API, dashboard et handlers.
-- [x] Créer/synchroniser la configuration serveur à l'ajout et au démarrage ; actualiser le nom et l'icône lors des changements de serveur.
-- [ ] À la perte d'accès à un serveur, conserver ses données et journaliser l'événement ; définir une politique d'archivage/rétention avant toute purge.
-- [x] Vérifier les contrôles des commandes slash sur les cibles, la hiérarchie et les permissions du bot ; `/ticket-setup` et `/reactionrole-setup` refusent maintenant de publier si le bot ne peut pas exécuter les actions liées (permissions de gestion et permissions de salon). Les sanctions vérifient les permissions du membre, la hiérarchie et les capacités du bot.
-- [ ] Tester les commandes sur un serveur Discord de test avec des permissions minimales, des rôles proches de la hiérarchie du bot et des cibles absentes/supprimées.
+- [ ] Le panneau de tickets utilise `panelTitle`, `panelDescription` et `buttonText` du dashboard ; une demande explicite met à jour le panneau existant et `/ticket-setup` réutilise ces valeurs. **Implémenté ; validation restante :** modifier chacun des textes via les deux parcours, republier et vérifier le message Discord final après redémarrage du bot.
+- [ ] Le réglage anti-spam est masqué tant que la protection configurable n'est pas implémentée. **Implémenté ; validation restante :** confirmer l'absence du contrôle UI et le rejet par l'API des champs non pris en charge.
+- [ ] L'API refuse les réglages modération/journalisation sans effet et n'expose que les options effectivement prises en charge. **Implémenté ; validation restante :** envoyer explicitement chaque champ non pris en charge et confirmer refus sans écriture ; vérifier l'UI et la réponse API.
+- [ ] `modRoleId` exempte uniquement du filtre anti-liens ; les commandes de sanction exigent les permissions Discord et respectent la hiérarchie ; `adminRoleId` et `muteRoleId` non implémentés ne sont pas modifiables depuis le dashboard. **Implémenté ; validation restante :** tester un membre avec/sans rôle modérateur sur filtre anti-liens et sanctions ; confirmer refus API des champs historiques.
+- [ ] Les événements vocaux et de rôles alimentent les journaux configurés. **Implémenté ; validation restante :** déclencher entrée/sortie/déplacement vocal et ajout/retrait de rôle ; vérifier salon, permissions manquantes et absence de log si désactivé.
+- [ ] Les valeurs par défaut bienvenue/départ, salons textuels, auto-rôles sous la hiérarchie du bot et couleur de secours ambre sont cohérents entre schéma, API, dashboard et handlers. **Implémenté ; validation restante :** comparer les valeurs par défaut de la DB et de l'UI puis tester couleur invalide, salon non textuel et rôle au-dessus du bot.
+- [ ] La configuration serveur est créée/synchronisée à l'ajout et au démarrage ; nom et icône sont actualisés lors d'un changement de serveur. **Implémenté ; validation restante :** tester ajout, redémarrage répété (idempotence), renommage, changement/retrait d'icône et panne DB/Discord.
+- [ ] À la perte d'accès à un serveur, conserver ses données, journaliser l'événement et définir une politique d'archivage/rétention avant toute purge. **Implémenté en partie ; à réaliser/valider :** confirmer le handler de départ et les logs ; décider explicitement durée, archivage et suppression avant d'ajouter toute purge.
+- [ ] Vérifier les commandes slash sur cibles, hiérarchie et permissions du bot ; `/ticket-setup` et `/reactionrole-setup` doivent refuser une publication impossible. **Implémenté ; validation restante :** appliquer « Vérifications Discord requises » à chaque commande sensible et cible absente/supprimée.
+- [ ] Vérifications Discord requises : serveur de test, permissions minimales, rôles à hauteur/au-dessus du bot, utilisateur cible plus haut que le modérateur, bot sans permissions, membre/canal/rôle supprimé ou inaccessible ; confirmer réponse d'interaction explicite, aucune action partielle non signalée, logs utiles et aucun succès mensonger.
 
 ## P1 — Données, tests et qualité
 
-- [ ] Ajouter une validation de configuration au démarrage : variables requises, formats Discord/OAuth, URL de callback et refus des secrets de développement en production.
-- [x] Charger dans Next.js les variables du `.env` à la racine du monorepo, y compris `NEXT_PUBLIC_DISCORD_CLIENT_ID` au build du dashboard.
-- [ ] Remplacer `prisma db push` comme procédure de production par des migrations versionnées, avec une procédure documentée de sauvegarde et restauration SQLite.
-- [ ] Garantir qu’une base fraîche peut être initialisée automatiquement et que le bot et le dashboard attendent une base prête avant de traiter les requêtes.
-- [x] Charger explicitement le `.env` racine pour les commandes Prisma exécutées depuis le workspace database ; afficher une erreur claire si `DATABASE_URL` manque.
-- [ ] Ajouter des tests automatisés : permissions et autorisations API, persistance des réglages, calcul XP/cooldown, modération, tickets, rôles interactifs et handlers d’événements.
-- [ ] Ajouter des scripts de test et de vérification des types/lint dans le monorepo, puis une CI qui exécute installation verrouillée, tests et builds sur chaque changement.
-- [ ] Tester sur un serveur Discord de test avec des permissions minimales, des rôles proches de la hiérarchie du bot et des salons supprimés/renommés.
-- [ ] Vérifier les limites Discord : délais d’interaction, rate limits, contenu d’embed, permissions manquantes, utilisateurs/canaux partiels et réponses après une interaction déjà différée.
-- [x] Définir et appliquer une politique de mentions autorisées pour les messages personnalisés de bienvenue, départ et annonces XP : les messages ne peuvent notifier que le membre concerné pour la bienvenue et l'annonce XP ; aucune mention pour le départ, et aucune mention générale ou de rôle.
-- [ ] Tester sur Discord que les mentions personnalisées de bienvenue, départ et annonces XP ne notifient aucun rôle ou tout le monde ; les essais réels nécessitent un serveur de test.
-- [ ] Ajouter des tests de parcours bout en bout : une sauvegarde refusée par Discord ne doit pas afficher de succès, les salons/rôles supprimés doivent produire une erreur exploitable, et les erreurs d’interaction après expiration doivent être journalisées clairement.
-- [ ] Encadrer la collecte et la conservation des données : contenu des messages journalisés, sanctions, données XP, suppression à la demande et durée de rétention.
+- [ ] Valider la configuration du bot au démarrage et celle du dashboard avant les opérations d'authentification/accès serveur : variables requises, identifiants Discord, callback OAuth, HTTPS en production et secrets de démonstration refusés. **Implémenté ; validation restante :** tests automatisés avec environnements valides/invalides, valeurs de démonstration et callback discordant ; vérifier que le build sans secrets passe et que l'exécution de production invalide échoue sans révéler de secret. Confirmer aussi manuellement l'URL inscrite dans le portail Discord.
+- [ ] Charger les variables `.env` racine dans Next.js, y compris `NEXT_PUBLIC_DISCORD_CLIENT_ID` au build dashboard. **Implémenté ; validation restante :** lancer le build depuis la racine et le workspace dashboard avec une variable publique de test ; vérifier qu'aucun secret privé ne se retrouve dans les bundles navigateur.
+- [ ] Remplacer `prisma db push` en production par des migrations versionnées et documenter sauvegarde/restauration SQLite. **À réaliser :** créer les migrations sans toucher à la DB locale ; documenter backup, vérification, restauration et rollback ; tester sur copie jetable avant production.
+- [ ] Initialiser automatiquement une base fraîche et attendre qu'elle soit prête avant traitement par le bot/dashboard. **À réaliser puis valider :** démarrer les deux composants avec DB absente/vierge, simuler indisponibilité au lancement, confirmer attente/retry contrôlé et absence de requêtes traitées avant disponibilité.
+- [ ] Les commandes Prisma exécutées depuis le workspace database chargent le `.env` racine et signalent l'absence de `DATABASE_URL`. **Implémenté ; validation restante :** lancer `generate`, `push`/`studio` dans un environnement isolé avec variable définie puis absente ; ne pas exécuter `db push` sur la base locale sans confirmation.
+- [ ] Ajouter des tests automatisés pour permissions/API, persistance, XP/cooldown, modération, tickets, rôles et handlers d'événements. **À réaliser :** tests unitaires/intégration isolés avec DB temporaire et mocks Discord ; inclure cas autorisé/refusé et erreurs, sans dépendance à un serveur personnel.
+- [ ] Ajouter scripts de test, typecheck/lint et CI sur installation verrouillée, tests et builds. **À réaliser puis valider :** exécuter localement les mêmes commandes que CI et vérifier un run vert sur pull request, avec échec démontré lorsqu'un test/typecheck échoue.
+- [ ] Tester sur serveur Discord de test les permissions minimales, hiérarchies proches et salons supprimés/renommés. **Validation externe requise :** suivre la matrice « Vérifications Discord requises » ; si aucun serveur n'est disponible, laisser cette étape ouverte sans bloquer les tâches locales.
+- [ ] Vérifier les limites Discord : délai d'interaction, rate limits, embeds, permissions manquantes, objets partiels et réponses après defer/expiration. **À réaliser puis valider :** tests unitaires avec mocks pour chaque cas, puis essais de confirmation sur Discord ; aucune interaction ne doit recevoir une seconde réponse invalide.
+- [ ] Politique de mentions des messages de bienvenue, départ et annonces XP. **Implémenté ; validation restante :** les payloads autorisent uniquement le membre concerné pour bienvenue/XP et aucune mention au départ ; tests automatisés du payload, puis vérifier sur Discord qu'aucun `@everyone`, rôle ou autre utilisateur n'est notifié.
+- [ ] Tests de parcours bout en bout : sauvegarde refusée jamais présentée comme réussie, références supprimées avec erreur exploitable, erreurs d'interaction expirée journalisées. **À réaliser :** exécuter chaque scénario via l'UI et API avec erreurs Discord injectées ; vérifier retour utilisateur, logs et état DB.
+- [ ] Encadrer collecte/rétention : contenu des messages journalisés, sanctions, données XP, suppression à la demande et durée. **À décider puis réaliser :** définir données nécessaires, durée par catégorie, procédure de suppression/export et information utilisateur ; implémenter et tester avant exploitation publique.
 
 ### Robustesse du cycle de vie des tickets
-- [x] Empêcher la création concurrente de plusieurs tickets ouverts pour un même membre et serveur avec une clé active unique en base ; réconcilier les enregistrements historiques sans clé avant toute nouvelle création.
-- [x] Nettoyer le salon Discord si l'initialisation ou l'enregistrement du ticket échoue ; journaliser et signaler explicitement les échecs de compensation.
-- [x] Ne marquer un ticket fermé qu'après suppression confirmée du salon ; en cas d'échec, restaurer son état ouvert et signaler toute erreur de restauration. Réconcilier les tickets en fermeture interrompue au redémarrage.
-- [ ] Tester les doubles clics et les échecs injectés (Discord, SQLite, nettoyage et redémarrage) avec des tests automatisés et sur un serveur de test.
+
+- [ ] Une clé active unique empêche les tickets concurrents d'un membre/serveur et les historiques sont réconciliés avant création. **Implémenté ; validation restante :** tests concurrents et données historiques dans DB jetable ; vérifier une seule création active et reprise après redémarrage.
+- [ ] Si initialisation/enregistrement échoue, le salon Discord créé est nettoyé et les erreurs de compensation sont signalées. **Implémenté ; validation restante :** injecter échec avant/après création Discord, échec SQLite et échec de suppression compensatoire ; vérifier logs et réponse utilisateur.
+- [ ] Un ticket n'est fermé qu'après suppression confirmée du salon ; en cas d'échec, son état ouvert est restauré ; les fermetures interrompues sont réconciliées au redémarrage. **Implémenté ; validation restante :** injecter échec de suppression, de mise à jour DB et arrêt durant `CLOSING`, puis redémarrer et comparer salon/DB.
+- [ ] Tester doubles clics, échecs Discord/SQLite/nettoyage et redémarrage. **À réaliser :** tests automatisés à concurrence contrôlée sur DB temporaire ; essais Discord de confirmation quand disponibles.
 
 ## P1 — Démarrage et exploitation automatiques
 
-- [ ] Ajouter une commande unique de développement qui lance dashboard et bot ensemble, avec arrêt propre des deux processus ; aujourd’hui ils sont lancés dans des terminaux séparés.
-- [ ] Définir la cible de déploiement et fournir une configuration reproductible (service Windows/Linux ou conteneurs), variables d’environnement documentées, build de production et commande de démarrage.
-- [ ] Préparer un déploiement hébergé séparant les composants : dashboard Next.js sur Vercel ; bot Discord sur un hébergeur de processus persistant (VPS, Render, Railway ou équivalent), pas comme fonction serverless.
-- [ ] Pour Vercel, définir et tester la configuration du monorepo (répertoire du dashboard, installation pnpm, génération Prisma et commande de build), puis vérifier les routes API et l'authentification en environnement de production.
-- [ ] Remplacer SQLite par PostgreSQL pour la production avant le déploiement hébergé ; adapter le datasource Prisma et versionner la migration sans perdre les données existantes, puis configurer une URL de connexion sécurisée accessible depuis Vercel et l'hébergeur du bot.
-- [ ] Configurer les variables de production séparément sur Vercel et l'hébergeur du bot : `DATABASE_URL`, `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL` et `NEXT_PUBLIC_DISCORD_CLIENT_ID` selon le composant ; ne jamais exposer de secret avec le préfixe `NEXT_PUBLIC_`.
-- [ ] Enregistrer dans le portail Discord l'URL OAuth de production `https://<domaine-dashboard>/api/auth/callback/discord`, en plus de l'URL locale de développement.
-- [ ] Définir le domaine HTTPS du dashboard et aligner `NEXTAUTH_URL`, l'URL de callback OAuth Discord, les URL de prévisualisation Vercel et les règles de cookies/sessions ; tester connexion, renouvellement OAuth et déconnexion.
-- [ ] Définir l'ordre reproductible de mise en production : préparer PostgreSQL et sauvegarde, appliquer les migrations, générer Prisma, déployer le dashboard et le bot, puis vérifier les accès Discord et les écritures/lectures de configuration.
-- [ ] Configurer redémarrage automatique après crash/redémarrage machine, arrêt propre (`SIGINT`/`SIGTERM`) et fermeture de Prisma ; vérifier la reconnexion Discord.
-- [ ] Automatiser migrations et génération Prisma au déploiement, sans exécuter de migration destructive sans sauvegarde.
-- [ ] Mettre en place logs exploitables, niveaux de gravité, rotation/rétention, suivi des erreurs et alertes de disponibilité ; ne jamais journaliser les tokens.
-- [ ] Ajouter une vérification de santé du dashboard, du bot et de la base, plus une procédure de diagnostic lorsque Discord, la base (SQLite en local ou PostgreSQL en production) ou OAuth est indisponible.
-- [ ] Sauvegarder automatiquement SQLite tant qu'elle reste utilisée et tester sa restauration ; définir et tester la stratégie de sauvegarde/restauration PostgreSQL pour la production.
-- [ ] Documenter l’invitation Discord avec uniquement les permissions/intents requis, l’activation des intents privilégiés, la création OAuth et la rotation des secrets.
+- [ ] Ajouter une commande de développement unique lançant bot et dashboard ensemble avec arrêt propre. **À réaliser puis valider :** démarrer la commande, vérifier les deux processus prêts, envoyer SIGINT/SIGTERM et confirmer arrêt des deux sans processus orphelin.
+- [ ] Définir la cible de déploiement et une configuration reproductible (service Windows/Linux ou conteneurs), variables, build production et démarrage. **À décider/réaliser :** choisir l'hébergeur et système, fournir configuration sans secret, puis exécuter le déploiement sur environnement de préproduction.
+- [ ] Préparer dashboard sur Vercel et bot sur un hébergeur de processus persistant, jamais en serverless. **À réaliser puis valider :** déployer les deux composants séparément et confirmer que le bot reste connecté/revient après redémarrage.
+- [ ] Configurer/tester Vercel pour le monorepo (répertoire, pnpm, Prisma, build), API et OAuth en production. **Validation externe requise :** déploiement preview puis production, build Vercel réussi, routes API et authentification testées avec compte dédié.
+- [ ] Remplacer SQLite par PostgreSQL en production, adapter Prisma, versionner la migration et migrer sans perte. **À réaliser après choix de l'hébergeur DB :** migration sur copie, comparer nombres/relations, tester retour arrière et seulement ensuite basculer ; ne pas changer le datasource en place sans plan de migration.
+- [ ] Configurer les variables séparément sur Vercel et l'hébergeur du bot (`DATABASE_URL`, `DISCORD_TOKEN`, identifiants OAuth, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `NEXT_PUBLIC_DISCORD_CLIENT_ID`) sans secret `NEXT_PUBLIC_`. **Validation externe requise :** configurer depuis gestionnaires de secrets, vérifier présence par composant et absence de secrets dans bundles, logs et pages d'erreur ; ne jamais transmettre les secrets dans le dépôt ou la conversation.
+- [ ] Enregistrer dans le portail Discord l'URL OAuth de production `https://<domaine-dashboard>/api/auth/callback/discord` et conserver l'URL locale. **Validation externe requise :** vérifier l'URI exacte dans le portail, démarrer OAuth sur domaine HTTPS et confirmer le callback.
+- [ ] Aligner domaine HTTPS, `NEXTAUTH_URL`, callback OAuth, domaines preview et cookies/sessions. **Validation externe requise :** tester connexion, renouvellement, expiration/révocation et déconnexion en production/preview ; vérifier cookies sécurisés et redirections.
+- [ ] Définir un ordre de mise en production reproductible (PostgreSQL, sauvegarde, migrations, Prisma, dashboard, bot, vérifications Discord). **À réaliser puis valider :** suivre la procédure à blanc en staging depuis snapshot et conserver les résultats/rollback.
+- [ ] Configurer redémarrage après crash/redémarrage machine, arrêt propre SIGINT/SIGTERM, fermeture Prisma et reconnexion Discord. **À réaliser puis valider :** redémarrer processus et machine en staging, vérifier absence de perte/cohérence et reconnexion automatique.
+- [ ] Automatiser migrations et génération Prisma au déploiement, sans migration destructive sans sauvegarde. **À réaliser puis valider :** déploiement staging depuis DB snapshot, confirmer ordre de migration, sauvegarde préalable et blocage/rollback sur échec.
+- [ ] Mettre en place logs exploitables, niveaux, rotation/rétention, suivi erreurs et alertes sans tokens. **À réaliser puis valider :** provoquer erreurs représentatives et vérifier alerte, rotation et absence de données sensibles dans logs.
+- [ ] Ajouter santé dashboard/bot/base et procédure de diagnostic Discord/DB/OAuth. **À réaliser puis valider :** simuler panne de chacun des services ; health checks doivent signaler l'indisponibilité et le guide doit permettre le rétablissement.
+- [ ] Sauvegarder automatiquement SQLite tant qu'utilisée, tester restauration ; définir et tester sauvegarde/restauration PostgreSQL en production. **À réaliser puis valider :** restaurer une sauvegarde dans un environnement isolé, comparer données et mesurer durée/perte admissible.
+- [ ] Documenter invitation Discord avec permissions/intents minimaux, activation des intents privilégiés, OAuth et rotation des secrets. **À réaliser puis valider :** suivre la documentation avec une application/serveur de test et vérifier qu'aucune permission/intention superflue n'est demandée.
 
 ## Critères de livraison
 
-- [ ] Depuis un clone propre : installation pnpm, préparation de la base, configuration guidée des secrets et lancement réussissent sans manipulations cachées.
-- [ ] Un administrateur se connecte, voit uniquement ses serveurs gérables et ne peut ni lire ni modifier les données d’un autre serveur.
-- [ ] Chaque réglage affiché est persisté, relu après rechargement/redémarrage et consommé par le bot ; chaque action Discord est vérifiable sur le serveur.
-- [ ] Les tests, le lint/typecheck et les builds passent en CI ; les échecs externes (Discord/OAuth/SQLite) sont visibles et récupérables.
-- [ ] En production, bot et dashboard redémarrent automatiquement, les données sont sauvegardées et les secrets ne sont pas exposés.
+- [ ] Depuis un clone propre : installation verrouillée, préparation DB, configuration guidée des secrets et lancement sans manipulation cachée. **Confirmation :** exécuter sur machine/répertoire vierge en suivant uniquement le README et consigner chaque commande.
+- [ ] Un administrateur ne voit que ses serveurs gérables et ne peut lire/modifier les données d'un autre serveur. **Confirmation :** tests automatisés d'autorisation inter-serveurs et parcours OAuth réel avec deux comptes/serveurs de test.
+- [ ] Chaque réglage affiché est persisté, relu après rechargement/redémarrage et consommé par le bot ; chaque action Discord est observable. **Confirmation :** parcours E2E par formulaire, inspection DB, redémarrage bot et vérification sur serveur Discord.
+- [ ] Tests, lint/typecheck et builds passent en CI ; échecs Discord/OAuth/SQLite sont visibles et récupérables. **Confirmation :** exécution CI verte et tests injectant chaque panne externe.
+- [ ] En production, bot/dashboard redémarrent automatiquement, données sauvegardées et secrets non exposés. **Confirmation :** exercice de panne/restauration en préproduction, inspection des redémarrages, sauvegardes, permissions de secrets et bundles.

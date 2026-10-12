@@ -19,11 +19,6 @@ export const config = {
 };
 
 export function validateBotEnvironment() {
-  const state = globalThis as typeof globalThis & { __botConfigWarningShown?: boolean };
-  if (state.__botConfigWarningShown) {
-    return;
-  }
-
   const errors: string[] = [];
 
   if (!config.token || isTruthyPlaceholder(config.token, ["YOUR_BOT_TOKEN_HERE", "VOTRE_TOKEN_BOT_DISCORD"])) {
@@ -34,21 +29,21 @@ export function validateBotEnvironment() {
     errors.push("DISCORD_CLIENT_ID doit être un identifiant Discord valide (snowflake). ");
   }
 
-  if (!config.clientSecret || config.clientSecret.length < 20) {
-    errors.push("DISCORD_CLIENT_SECRET est absent ou trop court.");
-  }
-
-  if (process.env.NODE_ENV === "production") {
-    if (process.env.NEXTAUTH_SECRET && process.env.NEXTAUTH_SECRET.includes("une_cle_secrete")) {
-      errors.push("NEXTAUTH_SECRET ne doit pas rester sur une valeur de développement en production.");
-    }
-  }
-
-  if (errors.length > 0) {
-    const message = ["⚠️ Configuration Discord incomplète ou invalide :", ...errors].join("\n- ");
-    console.warn(message);
-    state.__botConfigWarningShown = true;
-  }
+  return errors;
 }
 
-validateBotEnvironment();
+export function assertBotEnvironment() {
+  const errors = validateBotEnvironment();
+  if (errors.length > 0) {
+    const message = ["Configuration Discord incomplète ou invalide :", ...errors].join("\n- ");
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(message);
+    }
+
+    const state = globalThis as typeof globalThis & { __botConfigWarningShown?: boolean };
+    if (!state.__botConfigWarningShown) {
+      console.warn(`⚠️ ${message}`);
+      state.__botConfigWarningShown = true;
+    }
+  }
+}

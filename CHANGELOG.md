@@ -7,6 +7,30 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.21] - 2026-10-12 - Clarification des validations du TODO
+
+### Modifié [Effectué]
+- **TODO** : revue complète des tâches, distinction entre code implémenté et comportement confirmé, et ajout de critères de validation reproductibles pour les parcours locaux, Discord, OAuth et production.
+- Les tâches qui nécessitent encore une validation ne sont plus marquées comme terminées ; les essais externes sont signalés sans bloquer le travail local.
+
+### Notes Techniques
+- Documentation uniquement : aucun changement de code, de dépendance ou de schéma Prisma. Aucun build requis.
+
+---
+
+## [1.0.20] - 2026-10-12 - Validation de la configuration au démarrage
+
+### Corrigé [Effectué]
+- **Configuration du bot** : validation du token et de l'identifiant Discord avant connexion ; en production, le bot refuse de démarrer avec une configuration absente ou invalide.
+- **Configuration OAuth du dashboard** : validation des identifiants privés/publics, du secret NextAuth, des URL de base et de callback ; les requêtes d'authentification et d'accès serveur refusent une configuration invalide en production.
+
+### Notes Techniques
+- Les vérifications restent des avertissements en développement et ne divulguent aucune valeur secrète. Le build Next.js n'exige pas les secrets de production ; les valeurs doivent être présentes à l'exécution.
+- L'inscription effective de l'URL callback dans le portail développeur Discord ne peut pas être vérifiée depuis le code.
+- **Validation** : `pnpm build` réussi sans secrets configurés ; avertissements attendus pour la configuration absente de cet environnement.
+
+---
+
 ## [1.0.19] - 2026-10-12 - Encadrement des mentions des messages automatiques
 
 ### Corrigé [Effectué]

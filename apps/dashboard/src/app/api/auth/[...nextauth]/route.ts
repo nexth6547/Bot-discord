@@ -1,6 +1,11 @@
 import NextAuth from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { assertDashboardEnvironment, authOptions } from "@/lib/auth";
 
 const handler = NextAuth(authOptions);
 
-export { handler as GET, handler as POST };
+async function validatedHandler(request: Request, context: { params: { nextauth: string[] } }) {
+  assertDashboardEnvironment();
+  return handler(request, context);
+}
+
+export { validatedHandler as GET, validatedHandler as POST };

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@bot/database";
-import { authOptions } from "@/lib/auth";
+import { assertDashboardEnvironment, authOptions } from "@/lib/auth";
 
 const ADMINISTRATOR = 1n << 3n;
 const MANAGE_GUILD = 1n << 5n;
@@ -102,6 +102,8 @@ type GuildAccess =
   | { ok: false; response: NextResponse };
 
 export async function authorizeGuild(guildId: string): Promise<GuildAccess> {
+  assertDashboardEnvironment();
+
   if (!SNOWFLAKE_PATTERN.test(guildId)) {
     return {
       ok: false,

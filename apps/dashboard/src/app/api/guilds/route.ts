@@ -1,7 +1,9 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import prisma from "@bot/database";
-import { authOptions } from "@/lib/auth";
+import { assertDashboardEnvironment, authOptions } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
 
 interface DiscordGuild {
   id: string;
@@ -15,6 +17,7 @@ const ADMINISTRATOR = 1n << 3n;
 const MANAGE_GUILD = 1n << 5n;
 
 export async function GET() {
+  assertDashboardEnvironment();
   const session = await getServerSession(authOptions);
 
   if (!session?.accessToken || session.accessTokenError) {

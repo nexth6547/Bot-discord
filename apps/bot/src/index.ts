@@ -1,5 +1,5 @@
 import { BotClient } from "./client";
-import { config } from "./config";
+import { assertBotEnvironment, config } from "./config";
 
 // Commandes
 import { pingCommand } from "./commands/general/ping";
@@ -33,6 +33,7 @@ import { onInteractionCreate } from "./events/interactionCreate";
 
 async function main() {
   console.log("🚀 Initialisation du Bot Discord...");
+  assertBotEnvironment();
 
   const client = new BotClient();
 
@@ -89,4 +90,5 @@ async function main() {
 
 main().catch((err) => {
   console.error("❌ Erreur fatale au lancement du bot :", err);
+  process.exitCode = 1;
 });
