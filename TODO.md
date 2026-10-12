@@ -80,11 +80,18 @@ La connexion OAuth avec un vrai compte, l’accès aux serveurs réels et les co
 
 - [ ] Ajouter une commande unique de développement qui lance dashboard et bot ensemble, avec arrêt propre des deux processus ; aujourd’hui ils sont lancés dans des terminaux séparés.
 - [ ] Définir la cible de déploiement et fournir une configuration reproductible (service Windows/Linux ou conteneurs), variables d’environnement documentées, build de production et commande de démarrage.
+- [ ] Préparer un déploiement hébergé séparant les composants : dashboard Next.js sur Vercel ; bot Discord sur un hébergeur de processus persistant (VPS, Render, Railway ou équivalent), pas comme fonction serverless.
+- [ ] Pour Vercel, définir et tester la configuration du monorepo (répertoire du dashboard, installation pnpm, génération Prisma et commande de build), puis vérifier les routes API et l'authentification en environnement de production.
+- [ ] Remplacer SQLite par PostgreSQL pour la production avant le déploiement hébergé ; adapter le datasource Prisma et versionner la migration sans perdre les données existantes, puis configurer une URL de connexion sécurisée accessible depuis Vercel et l'hébergeur du bot.
+- [ ] Configurer les variables de production séparément sur Vercel et l'hébergeur du bot : `DATABASE_URL`, `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL` et `NEXT_PUBLIC_DISCORD_CLIENT_ID` selon le composant ; ne jamais exposer de secret avec le préfixe `NEXT_PUBLIC_`.
+- [ ] Enregistrer dans le portail Discord l'URL OAuth de production `https://<domaine-dashboard>/api/auth/callback/discord`, en plus de l'URL locale de développement.
+- [ ] Définir le domaine HTTPS du dashboard et aligner `NEXTAUTH_URL`, l'URL de callback OAuth Discord, les URL de prévisualisation Vercel et les règles de cookies/sessions ; tester connexion, renouvellement OAuth et déconnexion.
+- [ ] Définir l'ordre reproductible de mise en production : préparer PostgreSQL et sauvegarde, appliquer les migrations, générer Prisma, déployer le dashboard et le bot, puis vérifier les accès Discord et les écritures/lectures de configuration.
 - [ ] Configurer redémarrage automatique après crash/redémarrage machine, arrêt propre (`SIGINT`/`SIGTERM`) et fermeture de Prisma ; vérifier la reconnexion Discord.
 - [ ] Automatiser migrations et génération Prisma au déploiement, sans exécuter de migration destructive sans sauvegarde.
 - [ ] Mettre en place logs exploitables, niveaux de gravité, rotation/rétention, suivi des erreurs et alertes de disponibilité ; ne jamais journaliser les tokens.
-- [ ] Ajouter une vérification de santé du dashboard, du bot et de la base, plus une procédure de diagnostic lorsque Discord, SQLite ou OAuth est indisponible.
-- [ ] Planifier des sauvegardes SQLite automatiques et tester périodiquement leur restauration.
+- [ ] Ajouter une vérification de santé du dashboard, du bot et de la base, plus une procédure de diagnostic lorsque Discord, la base (SQLite en local ou PostgreSQL en production) ou OAuth est indisponible.
+- [ ] Sauvegarder automatiquement SQLite tant qu'elle reste utilisée et tester sa restauration ; définir et tester la stratégie de sauvegarde/restauration PostgreSQL pour la production.
 - [ ] Documenter l’invitation Discord avec uniquement les permissions/intents requis, l’activation des intents privilégiés, la création OAuth et la rotation des secrets.
 
 ## Critères de livraison

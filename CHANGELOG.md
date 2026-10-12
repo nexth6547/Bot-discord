@@ -7,6 +7,16 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.18] - 2026-10-12 - Préparation du déploiement hébergé
+
+### Modifié [Effectué]
+- **TODO** : ajout des prérequis de déploiement du dashboard Next.js sur Vercel, du bot sur un hébergeur de processus persistant, du passage de SQLite à PostgreSQL en production, de la configuration OAuth Discord et des variables d'environnement.
+
+### Notes Techniques
+- Documentation uniquement : aucun changement de code, de dépendance ou de schéma Prisma ; les étapes restent à réaliser et valider avant une mise en production.
+
+---
+
 ## [1.0.17] - 2026-10-09 - Exclusion de la base SQLite locale
 
 ### Modifié [Effectué]
