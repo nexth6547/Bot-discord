@@ -26,3 +26,17 @@ Ce projet est un monorepo combinant un **Bot Discord (Discord.js v14)**, un **Da
 - Traiter les fichiers transmis ou arborescences ciblées sans exiger une réécriture globale.
 - Croiser les modifications avec le contexte monorepo existant avant d'éditer ou de valider.
 - Synchroniser systématiquement le `CHANGELOG.md`.
+
+## 4. Synchronisation au démarrage d'une session IA
+- Avant toute modification, vérifier l’état Git avec `git status --short --branch`.
+- Si la branche est divergente ou distante plus avancée, synchroniser avec :
+  - `git fetch origin`
+  - `git pull --rebase origin main`
+- En cas de conflit, résoudre les fichiers conflictuels manuellement et terminer le rebase avec :
+  - `git add <fichiers corrigés>`
+  - `git rebase --continue`
+- Ne pas pousser sans avoir rebasé la branche si `origin/main` a avancé.
+- Après des changements de code, valider avec :
+  - `pnpm build`
+- Si un autre codespace ou compte a travaillé sur le dépôt, ne pas écraser son travail sans confirmation.
+- Garder le `CHANGELOG.md` cohérent avec les changements réellement poussés.
