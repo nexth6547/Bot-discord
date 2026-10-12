@@ -7,6 +7,22 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.22] - 2026-10-12 - Premiers tests automatisés et CI
+
+### Ajouté [Effectué]
+- **Tests XP** : tests des seuils XP et du changement exact de niveau aux bornes.
+- **CI** : workflow GitHub Actions pour installation pnpm verrouillée, tests et builds sur push/PR vers `main`.
+
+### Modifié [Effectué]
+- **Scripts** : ajout de `pnpm test` à la racine et dans le workspace bot.
+- **TODO** : suivi explicite de la couverture automatisée restante et du lint à configurer.
+
+### Notes Techniques
+- Utilisation du runner natif `node:test` via `tsx` déjà présent dans `@bot/core` ; aucune dépendance ajoutée et aucune base locale modifiée.
+- **Validation locale** : `pnpm test` (3 tests réussis) et `pnpm build` réussis. Le workflow GitHub Actions devra encore être confirmé par un run distant.
+
+---
+
 ## [1.0.21] - 2026-10-12 - Clarification des validations du TODO
 
 ### Modifié [Effectué]
