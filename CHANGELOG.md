@@ -7,6 +7,16 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.24] - 2026-10-12 - Préparation de la base avant les tests
+
+### Corrigé [Effectué]
+- **CI** : compilation de `@bot/database` avant les tests du bot, afin que son point d'entrée `dist/index.js` soit disponible même lorsque les tests sont exécutés avant le build global.
+
+### Notes Techniques
+- **Validation** : `pnpm test` exécuté après modification.
+
+---
+
 ## [1.0.23] - 2026-10-12 - Cycle de vie local et santé du dashboard
 
 ### Ajouté [Effectué]
