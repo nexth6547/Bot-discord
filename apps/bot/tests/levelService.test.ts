@@ -21,3 +21,20 @@ test("getLevelFromXp changes level exactly at each XP threshold", () => {
     assert.equal(LevelService.getLevelFromXp(threshold), level);
   }
 });
+
+test("isOnCooldown stays active before the threshold and expires at the threshold", () => {
+  const lastXpAt = new Date("2026-10-12T12:00:00.000Z");
+
+  assert.equal(
+    LevelService.isOnCooldown(lastXpAt, new Date("2026-10-12T12:00:59.999Z"), 60),
+    true
+  );
+  assert.equal(
+    LevelService.isOnCooldown(lastXpAt, new Date("2026-10-12T12:01:00.000Z"), 60),
+    false
+  );
+  assert.equal(
+    LevelService.isOnCooldown(lastXpAt, new Date("2026-10-12T12:00:00.000Z"), 0),
+    false
+  );
+});

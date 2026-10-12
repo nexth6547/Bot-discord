@@ -69,6 +69,7 @@ export default function TicketsConfigPage({
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
@@ -93,6 +94,7 @@ export default function TicketsConfigPage({
         setRoles(resources.roles);
       } catch (loadError) {
         if (active) {
+          setLoadFailed(true);
           setError(
             loadError instanceof Error
               ? loadError.message
@@ -272,7 +274,7 @@ export default function TicketsConfigPage({
                 ))}
               </select>
               <span className="mt-1 block text-[11px] text-zinc-500">
-                Le choix s'applique lorsque vous publiez ou mettez à jour le panneau.
+                Le choix s&apos;applique lorsque vous publiez ou mettez à jour le panneau.
               </span>
             </label>
 
@@ -311,7 +313,7 @@ export default function TicketsConfigPage({
           <div className="flex flex-col sm:flex-row justify-end gap-3 border-t border-zinc-800 pt-4">
             <button
               onClick={handleSave}
-              disabled={loading || saving || publishing || Boolean(error)}
+              disabled={loading || saving || publishing || loadFailed}
               className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-100 font-medium text-sm transition"
             >
               <Save className="w-4 h-4" />
@@ -319,7 +321,7 @@ export default function TicketsConfigPage({
             </button>
             <button
               onClick={handlePublish}
-              disabled={loading || saving || publishing || Boolean(error) || !settings.enabled || !settings.panelChannelId}
+              disabled={loading || saving || publishing || loadFailed || !settings.enabled || !settings.panelChannelId}
               className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-zinc-950 font-semibold text-sm transition"
             >
               {settings.panelMessageId ? <Check className="w-4 h-4" /> : <Upload className="w-4 h-4" />}

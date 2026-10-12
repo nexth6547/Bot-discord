@@ -55,7 +55,7 @@ export default function RootLayout({
           <main className="flex-1 flex flex-col">{children}</main>
 
           <footer className="border-t border-zinc-900 py-6 text-center text-xs text-zinc-500">
-            <p>Bloomera Bot & Dashboard d'administration &bull; Un petit coin de soleil pour votre communauté</p>
+            <p>Bloomera Bot & Dashboard d&apos;administration &bull; Un petit coin de soleil pour votre communauté</p>
           </footer>
         </AuthProvider>
       </body>

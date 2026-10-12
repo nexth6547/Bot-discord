@@ -57,6 +57,7 @@ export default function WelcomeConfigPage({ params }: { params: { guildId: strin
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -89,7 +90,10 @@ export default function WelcomeConfigPage({ params }: { params: { guildId: strin
         setChannels(resources.channels.filter((item) => item.type !== 4));
         setRoles(resources.roles);
       } catch {
-        if (active) setError("La configuration et les ressources du serveur n'ont pas pu être chargées.");
+        if (active) {
+          setLoadFailed(true);
+          setError("La configuration et les ressources du serveur n'ont pas pu être chargées.");
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -144,9 +148,9 @@ export default function WelcomeConfigPage({ params }: { params: { guildId: strin
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Messages d'Accueil & Départ</h1>
+        <h1 className="text-2xl font-bold text-white tracking-tight">Messages d&apos;Accueil & Départ</h1>
         <p className="text-sm text-zinc-400 mt-1">
-          Configurez l'accueil automatique des nouveaux membres avec un message ou un embed soigné.
+          Configurez l&apos;accueil automatique des nouveaux membres avec un message ou un embed soigné.
         </p>
       </div>
 
@@ -178,7 +182,7 @@ export default function WelcomeConfigPage({ params }: { params: { guildId: strin
               <>
                 <div>
                   <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                    Salon d'envoi
+                    Salon d&apos;envoi
                   </label>
                   <select
                     value={channel}
@@ -192,7 +196,7 @@ export default function WelcomeConfigPage({ params }: { params: { guildId: strin
 
                 <div>
                   <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                    Titre de l'Embed
+                    Titre de l&apos;Embed
                   </label>
                   <input
                     type="text"
@@ -209,12 +213,12 @@ export default function WelcomeConfigPage({ params }: { params: { guildId: strin
                     onChange={(e) => setUseEmbed(e.target.checked)}
                     className="h-4 w-4 rounded border-zinc-700 bg-zinc-950 text-amber-500"
                   />
-                  Envoyer le message sous forme d'embed
+                  Envoyer le message sous forme d&apos;embed
                 </label>
 
                 <div>
                   <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                    Message d'accueil
+                    Message d&apos;accueil
                   </label>
                   <textarea
                     rows={4}
@@ -298,7 +302,7 @@ export default function WelcomeConfigPage({ params }: { params: { guildId: strin
 
           <button
             onClick={handleSave}
-            disabled={loading || saving || Boolean(error)}
+            disabled={loading || saving || loadFailed}
             className="w-full inline-flex items-center justify-center gap-2 py-3 px-6 rounded-xl bg-zinc-100 hover:bg-white text-zinc-950 font-semibold text-sm transition"
           >
             {saved ? <Check className="w-4 h-4 text-emerald-600" /> : <Save className="w-4 h-4" />}
@@ -324,7 +328,7 @@ export default function WelcomeConfigPage({ params }: { params: { guildId: strin
                   <span className="bg-[#5865F2] text-[10px] text-white font-bold px-1.5 py-0.5 rounded">
                     BOT
                   </span>
-                  <span className="text-[11px] text-zinc-400">Aujourd'hui à 20:00</span>
+                  <span className="text-[11px] text-zinc-400">Aujourd&apos;hui à 20:00</span>
                 </div>
                 <span className="text-xs text-indigo-400">@NouveauMembre</span>
               </div>

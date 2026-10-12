@@ -172,6 +172,14 @@ pnpm db:studio
 
 ## Lancer le projet
 
+### Bot et dashboard ensemble
+
+```bash
+pnpm dev:all
+```
+
+Cette commande lance les deux workspaces en parallèle. `Ctrl+C` arrête les processus ; le bot ferme sa connexion Discord et Prisma sur SIGINT/SIGTERM.
+
 ### Dashboard
 
 ```bash
@@ -201,14 +209,21 @@ Depuis la racine du dépôt :
 | Commande | Description |
 | --- | --- |
 | `pnpm dev` | Lance le bot seulement |
+| `pnpm dev:all` | Lance le bot et le dashboard ensemble |
 | `pnpm dev:bot` | Lance le bot en mode développement |
 | `pnpm dev:dashboard` | Lance le dashboard |
+| `pnpm --filter @bot/dashboard start` | Lance le dashboard compilé en production |
+| `pnpm --filter @bot/core start` | Lance le bot compilé en production |
 | `pnpm build` | Build complet du monorepo |
+| `pnpm test` | Exécute les tests automatisés |
+| `pnpm lint` | Vérifie le lint du dashboard |
 | `pnpm build:bot` | Build du bot |
 | `pnpm build:dashboard` | Build du dashboard |
 | `pnpm db:generate` | Génère le client Prisma |
 | `pnpm db:push` | Synchronise le schéma Prisma vers SQLite |
 | `pnpm db:studio` | Ouvre Prisma Studio |
+
+La disponibilité du dashboard et de sa base est vérifiable via `GET /api/health` ; la route répond `503` si la base est indisponible.
 
 ---
 
@@ -231,4 +246,3 @@ Le dashboard utilise actuellement une palette sombre avec des accents ambrés et
 - [AGENTS.md](./AGENTS.md)
 - [CHANGELOG.md](./CHANGELOG.md)
 - [TODO.md](./TODO.md)
-

@@ -58,6 +58,7 @@ export default function LevelsConfigPage({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -81,6 +82,7 @@ export default function LevelsConfigPage({
         setChannels(resources.channels.filter((channel) => channel.type !== 4));
       } catch (loadError) {
         if (active) {
+          setLoadFailed(true);
           setError(
             loadError instanceof Error
               ? loadError.message
@@ -134,7 +136,7 @@ export default function LevelsConfigPage({
           Système de Niveaux & Expérience (XP)
         </h1>
         <p className="text-sm text-zinc-400 mt-1">
-          Paramétrez le gain d'expérience et consultez le classement enregistré pour ce serveur.
+          Paramétrez le gain d&apos;expérience et consultez le classement enregistré pour ce serveur.
         </p>
       </div>
 
@@ -196,7 +198,7 @@ export default function LevelsConfigPage({
             </label>
 
             <label className="block text-xs font-medium text-zinc-300">
-              Salon d'annonce de montée de niveau
+              Salon d&apos;annonce de montée de niveau
               <select
                 value={settings.announceChannelId ?? ""}
                 onChange={(event) => update("announceChannelId", event.target.value || null)}
@@ -227,7 +229,7 @@ export default function LevelsConfigPage({
           <div className="flex justify-end border-t border-zinc-800 pt-4">
             <button
               onClick={handleSave}
-              disabled={loading || saving || Boolean(error)}
+              disabled={loading || saving || loadFailed}
               className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-zinc-100 hover:bg-white disabled:opacity-50 text-zinc-950 font-medium text-sm transition"
             >
               {saved ? <Check className="w-4 h-4 text-emerald-600" /> : <Save className="w-4 h-4" />}

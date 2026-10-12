@@ -7,10 +7,30 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.23] - 2026-10-12 - Cycle de vie local et santé du dashboard
+
+### Ajouté [Effectué]
+- **Développement** : commande `pnpm dev:all` pour lancer bot et dashboard ensemble.
+- **Santé** : route `/api/health` vérifiant la disponibilité du dashboard et de sa base Prisma.
+- **Qualité** : ESLint configuré pour Next.js et ajouté à la CI ; version pnpm verrouillée à `12.3.4`.
+
+### Modifié [Effectué]
+- **Bot** : connexion à la base avant login Discord et fermeture de Discord/Prisma sur SIGINT/SIGTERM ; une erreur de login donne un code de sortie en échec.
+- **Documentation** : README complété avec les commandes de développement combiné, de production, de tests/lint et l'endpoint de santé.
+- **Lint** : corrections des entités JSX et de la dépendance d'effet signalées par le nouveau lint ; commande racine `pnpm lint` ajoutée et exécution incluse dans la CI.
+- **Formulaires** : une erreur d'enregistrement permet de réessayer ; un échec du chargement initial bloque la soumission des valeurs par défaut.
+- **TODO** : suivi des travaux de cycle de vie et de santé encore restants.
+
+### Notes Techniques
+- Aucune migration ni modification de données locales ; l'endpoint de santé ne fait qu'une requête `SELECT 1`.
+- **Validation locale** : `pnpm install --frozen-lockfile`, `pnpm test` (4 tests), `pnpm lint` et `pnpm build` réussis ; lancement de `pnpm dev:all` confirmé pour bot et dashboard. L'arrêt propre de l'arbre de processus combiné reste à vérifier depuis un terminal interactif.
+
+---
+
 ## [1.0.22] - 2026-10-12 - Premiers tests automatisés et CI
 
 ### Ajouté [Effectué]
-- **Tests XP** : tests des seuils XP et du changement exact de niveau aux bornes.
+- **Tests XP** : tests des seuils XP, du changement exact de niveau et des limites du cooldown.
 - **CI** : workflow GitHub Actions pour installation pnpm verrouillée, tests et builds sur push/PR vers `main`.
 
 ### Modifié [Effectué]

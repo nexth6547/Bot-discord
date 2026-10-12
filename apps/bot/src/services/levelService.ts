@@ -2,6 +2,10 @@ import { Message, TextChannel } from "discord.js";
 import prisma from "@bot/database";
 
 export class LevelService {
+  public static isOnCooldown(lastXpAt: Date, now: Date, cooldownSeconds: number): boolean {
+    return (now.getTime() - lastXpAt.getTime()) / 1000 < cooldownSeconds;
+  }
+
   /**
    * Calcule le niveau en fonction de l'XP totale
    * Formule standard style DraftBot / Mee6
@@ -71,8 +75,7 @@ export class LevelService {
       const now = new Date();
       if (userLevel) {
         // Vérifier le cooldown anti-spam
-        const diffSeconds = (now.getTime() - new Date(userLevel.lastXpAt).getTime()) / 1000;
-        if (diffSeconds < config.cooldownSeconds) {
+        if (this.isOnCooldown(new Date(userLevel.lastXpAt), now, config.cooldownSeconds)) {
           // Juste incrémenter le compteur de messages sans donner d'XP
           await prisma.userLevel.update({
             where: { id: userLevel.id },

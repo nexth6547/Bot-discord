@@ -47,6 +47,7 @@ export default function ReactionRolesPage({
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
   const [notice, setNotice] = useState("");
 
   const load = useCallback(async () => {
@@ -75,6 +76,7 @@ export default function ReactionRolesPage({
         await load();
       } catch (loadError) {
         if (active) {
+          setLoadFailed(true);
           setError(
             loadError instanceof Error
               ? loadError.message
@@ -168,7 +170,7 @@ export default function ReactionRolesPage({
 
         {roles.length === 0 ? (
           <p className="text-sm text-zinc-400">
-            Aucun rôle gérable par le bot n'est disponible. Vérifiez sa permission Gérer les rôles et sa hiérarchie.
+            Aucun rôle gérable par le bot n&apos;est disponible. Vérifiez sa permission Gérer les rôles et sa hiérarchie.
           </p>
         ) : (
           <>
@@ -226,7 +228,7 @@ export default function ReactionRolesPage({
             <div className="flex justify-end">
               <button
                 onClick={handleAdd}
-                disabled={loading || saving || !channelId || !roleId || !label.trim() || !emoji.trim()}
+                disabled={loading || loadFailed || saving || !channelId || !roleId || !label.trim() || !emoji.trim()}
                 className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-zinc-100 hover:bg-white disabled:opacity-50 text-zinc-950 font-medium text-sm transition"
               >
                 {saving ? <span>Publication…</span> : <><Plus className="w-4 h-4" /><span>Publier sur Discord</span></>}

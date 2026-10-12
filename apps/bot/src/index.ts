@@ -35,7 +35,14 @@ async function main() {
   console.log("🚀 Initialisation du Bot Discord...");
   assertBotEnvironment();
 
+  if (!config.token || config.token === "YOUR_BOT_TOKEN_HERE") {
+    console.log("ℹ️ En attente de la configuration du token dans le fichier .env pour se connecter à Discord.");
+    console.log("👉 Renseignez DISCORD_TOKEN dans .env puis redémarrez le bot.");
+    return;
+  }
+
   const client = new BotClient();
+  await client.db.$connect();
 
   // Enregistrement des commandes dans la collection
   const allCommands = [
@@ -75,16 +82,38 @@ async function main() {
   client.on("messageUpdate", onMessageUpdate);
   client.on("interactionCreate", (interaction) => onInteractionCreate(interaction, client));
 
-  if (!config.token || config.token === "YOUR_BOT_TOKEN_HERE") {
-    console.log("ℹ️ En attente de la configuration du token dans le fichier .env pour se connecter à Discord.");
-    console.log("👉 Renseignez DISCORD_TOKEN dans .env puis redémarrez le bot.");
-    return;
-  }
+  let shutdownPromise: Promise<void> | undefined;
+  let shuttingDown = false;
+  const shutdown = (signal: string) => {
+    if (shutdownPromise) return shutdownPromise;
+
+    shuttingDown = true;
+    console.log(`🛑 Arrêt du bot demandé (${signal}).`);
+    shutdownPromise = (async () => {
+      client.destroy();
+      await client.db.$disconnect();
+      console.log("✅ Connexion Discord et base de données fermées.");
+    })();
+    return shutdownPromise;
+  };
+
+  const handleSignal = (signal: NodeJS.Signals) => {
+    void shutdown(signal).catch((err) => {
+      console.error(`❌ Erreur lors de l'arrêt (${signal}) :`, err);
+      process.exitCode = 1;
+    });
+  };
+
+  process.once("SIGINT", handleSignal);
+  process.once("SIGTERM", handleSignal);
 
   try {
     await client.login(config.token);
   } catch (err) {
+    if (shuttingDown) return;
     console.error("❌ Échec de la connexion à Discord :", err);
+    process.exitCode = 1;
+    await shutdown("échec de connexion");
   }
 }
 

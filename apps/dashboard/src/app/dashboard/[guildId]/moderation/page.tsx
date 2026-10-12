@@ -66,6 +66,7 @@ export default function ModerationConfigPage({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -92,6 +93,7 @@ export default function ModerationConfigPage({
         setRoles(resources.roles);
       } catch (loadError) {
         if (active) {
+          setLoadFailed(true);
           setError(
             loadError instanceof Error
               ? loadError.message
@@ -201,7 +203,7 @@ export default function ModerationConfigPage({
         <div className="pt-2 flex justify-end">
           <button
             onClick={handleSave}
-            disabled={loading || saving || Boolean(error)}
+            disabled={loading || saving || loadFailed}
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-zinc-100 hover:bg-white disabled:opacity-50 text-zinc-950 font-medium text-sm transition"
           >
             {saved ? <Check className="w-4 h-4 text-emerald-600" /> : <Save className="w-4 h-4" />}
@@ -216,7 +218,7 @@ export default function ModerationConfigPage({
           <p className="mt-1 text-xs text-zinc-500">20 entrées récentes enregistrées en base.</p>
         </div>
         {loading ? (
-          <p className="text-sm text-zinc-400">Chargement de l'historique…</p>
+          <p className="text-sm text-zinc-400">Chargement de l&apos;historique…</p>
         ) : sanctions.length === 0 ? (
           <p className="text-sm text-zinc-400">Aucune sanction enregistrée pour ce serveur.</p>
         ) : (

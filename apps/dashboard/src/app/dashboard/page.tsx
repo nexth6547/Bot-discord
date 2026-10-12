@@ -50,13 +50,13 @@ export default function DashboardPage() {
       .then(async (response) => {
         if (response.status === 401) {
           if (active) setSessionExpired(true);
-          return { guilds: [] };
+          return null;
         }
         if (!response.ok) throw new Error("Impossible de charger les serveurs.");
         return (await response.json()) as { guilds: Guild[] };
       })
-      .then(({ guilds: loadedGuilds }) => {
-        if (active && !sessionExpired) setGuilds(loadedGuilds);
+      .then((result) => {
+        if (active && result) setGuilds(result.guilds);
       })
       .catch(() => {
         if (active) setError("Les serveurs Discord n'ont pas pu être chargés.");

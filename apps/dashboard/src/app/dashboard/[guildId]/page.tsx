@@ -74,7 +74,7 @@ export default function GuildOverviewPage({
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Vue d'ensemble</h1>
+        <h1 className="text-2xl font-bold text-white tracking-tight">Vue d&apos;ensemble</h1>
         <p className="text-sm text-zinc-400 mt-1">
           Statistiques actualisées depuis Discord et la base de données du bot.
         </p>
@@ -112,7 +112,7 @@ export default function GuildOverviewPage({
       <div className="rounded-2xl bg-zinc-900/40 border border-zinc-800 p-6">
         <h2 className="text-base font-semibold text-white">Réglages généraux</h2>
         <p className="mt-2 text-sm text-zinc-400">
-          Les commandes disponibles sont des commandes slash. Le préfixe de commandes texte et la langue ne sont pas encore appliqués par le bot ; ces réglages ne sont donc pas proposés ici pour éviter de suggérer qu'ils fonctionnent.
+          Les commandes disponibles sont des commandes slash. Le préfixe de commandes texte et la langue ne sont pas encore appliqués par le bot ; ces réglages ne sont donc pas proposés ici pour éviter de suggérer qu&apos;ils fonctionnent.
         </p>
       </div>
     </div>

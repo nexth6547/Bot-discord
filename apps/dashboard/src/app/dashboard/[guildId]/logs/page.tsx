@@ -91,6 +91,7 @@ export default function LogsConfigPage({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -113,6 +114,7 @@ export default function LogsConfigPage({
         setChannels(resources.channels.filter((channel) => channel.type !== 4));
       } catch (loadError) {
         if (active) {
+          setLoadFailed(true);
           setError(
             loadError instanceof Error
               ? loadError.message
@@ -173,7 +175,7 @@ export default function LogsConfigPage({
           Salons de Journalisation (Logs)
         </h1>
         <p className="text-sm text-zinc-400 mt-1">
-          Choisissez les salons réels où le bot publiera les événements qu'il traite.
+          Choisissez les salons réels où le bot publiera les événements qu&apos;il traite.
         </p>
       </div>
 
@@ -241,7 +243,7 @@ export default function LogsConfigPage({
         <div className="pt-2 flex justify-end">
           <button
             onClick={handleSave}
-            disabled={loading || saving || Boolean(error)}
+            disabled={loading || saving || loadFailed}
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-zinc-100 hover:bg-white disabled:opacity-50 text-zinc-950 font-medium text-sm transition"
           >
             {saved ? <Check className="w-4 h-4 text-emerald-600" /> : <Save className="w-4 h-4" />}
