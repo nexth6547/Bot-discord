@@ -1,89 +1,134 @@
-# 🤖 Bloomera - Bot Discord & Dashboard Web
+# Bloomera
 
-Une solution complète pour gérer un serveur Discord via un **Bot polyvalent** et une **Interface Web d'administration (Dashboard)** moderne et au style neutre (prête à recevoir la charte graphique de votre serveur).
+Bloomera est un monorepo qui associe un bot Discord complet et un dashboard d'administration web pour gérer les réglages d'un serveur, les logs, les tickets, les niveaux XP et les rôles interactifs.
 
----
-
-## 🌟 Fonctionnalités Incluses
-
-### 🛡️ 1. Modération & Sécurité
-- **Commandes Slash** : `/ban`, `/kick`, `/timeout` (exclusion temporaire), `/warn` (avertissement avec historique), `/warnings`, `/clear` (purge en masse).
-- **Auto-Modération** : Détection et suppression automatique des liens/invitations Discord suspects.
-- **Historique complet** : Enregistrement de chaque sanction en base de données.
-
-### 👋 2. Accueil & Départs
-- Messages de bienvenue personnalisables (texte brut ou Embed riche avec couleur personnalisable).
-- Variables dynamiques : `{user}`, `{server}`, `{count}` (nombre de membres).
-- **Auto-Rôle** : Attribution automatique d'un rôle d'arrivée aux nouveaux membres.
-- Message d'au revoir configurable.
-
-### 📜 3. Salons de Journalisation (Audit Logs)
-- Salons séparés pour chaque catégorie d'événement :
-  - **Modération** (sanctions, purges)
-  - **Messages** (suppressions, éditions avec avant/après)
-  - **Membres** (arrivées, départs)
-  - **Vocal** (connexions, déconnexions)
-
-### 📩 4. Système de Support par Tickets
-- Déploiement d'un panneau avec bouton interactif via `/ticket-setup`.
-- Création instantanée d'un salon textuel privé avec permissions restreintes (l'auteur du ticket et le rôle Support).
-- Bouton de fermeture avec confirmation et suppression propre du salon.
-
-### 🏆 5. Niveaux & Système d'XP
-- Gain d'XP paramétrable par message avec cooldown anti-spam.
-- Commande `/rank` avec carte de niveau et barre de progression.
-- Commande `/leaderboard` et affichage du classement sur le dashboard web.
-- Annonces de montée de niveau configurables.
-
-### 🎭 6. Rôles par Réaction / Boutons
-- Commande `/reactionrole-setup` pour déployer des boutons interactifs permettant aux membres de s'auto-attribuer des rôles en un clic.
+Le projet est conçu pour fonctionner avec Discord.js v14, Next.js, Prisma et SQLite dans un environnement de développement local ou de production simple.
 
 ---
 
-## 📁 Architecture du Projet
+## Aperçu
 
-```
-Bot Discord/
+- Bot Discord avec commandes slash et événements de guild
+- Dashboard web protégé par session Discord
+- Gestion de la configuration serveur côté base de données
+- Modération, bienvenue/départ, tickets, niveaux, rôles interactifs
+- Architecture monorepo avec workspaces pnpm
+
+---
+
+## Stack technique
+
+- Bot : Discord.js v14
+- Dashboard : Next.js 14 + React + Tailwind CSS
+- Base de données : Prisma + SQLite
+- Gestionnaire de paquets : pnpm
+- Langage : TypeScript
+
+---
+
+## Structure du dépôt
+
+```text
+Bot-discord/
 ├── apps/
-│   ├── bot/                 # Client Discord.js v14 (commandes, événements, services)
-│   └── dashboard/           # Interface d'administration web Next.js 14 + Tailwind CSS
+│   ├── bot/
+│   │   └── src/
+│   └── dashboard/
+│       └── src/
 ├── packages/
-│   └── database/            # Base de données SQLite & Client Prisma ORM partagé
-├── .env.example             # Modèle des variables de configuration
-├── package.json             # Monorepo workspaces
-└── README.md
+│   └── database/
+├── .env.example
+├── AGENTS.md
+├── CHANGELOG.md
+├── README.md
+├── TODO.md
+├── package.json
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+└── tsconfig.base.json
 ```
 
 ---
 
-## 🚀 Guide de Démarrage Rapide
+## Fonctionnalités principales
 
-### 0. Installer les dépendances
-Depuis la racine du dépôt, avec pnpm installé :
-```powershell
-pnpm install
+### Modération
+- `/ban`, `/kick`, `/timeout`, `/warn`, `/warnings`, `/clear`
+- historique des sanctions en base
+- vérification des permissions et hiérarchie Discord
+- protection anti-liens / invitations configurable
+
+### Bienvenue et départ
+- messages de bienvenue configurables
+- message de départ configurable
+- auto-rôle assignable
+- couleurs et embeds personnalisables
+
+### Logs / audit
+- modération, messages, membres, vocaux
+- enregistrement côté bot et configuration côté dashboard
+
+### Tickets
+- panneau interactif pour ouvrir un ticket
+- création de salon privé
+- fermeture avec permissions restreintes
+- support et journalisation
+
+### Niveaux XP
+- XP par message avec cooldown
+- système de progression
+- classement et messages d'élévation
+
+### Rôles interactifs
+- panneaux de rôles via boutons
+- publication du message Discord
+- mise à jour et suppression depuis le dashboard
+
+---
+
+## Prérequis
+
+- Node.js 20+
+- pnpm
+- un compte Discord avec un serveur de test
+- accès au portail développeur Discord
+
+---
+
+## Configuration Discord
+
+### 1. Créer une application Discord
+1. Rendez-vous sur le [Discord Developer Portal](https://discord.com/developers/applications)
+2. Créez une application
+3. Ouvrez l’onglet Bot
+4. Réinitialisez le token et copiez-le
+5. Activez les intents privilégiés nécessaires :
+   - Server Members Intent
+   - Message Content Intent
+
+### 2. Ajouter le bot au serveur
+Dans l’onglet OAuth2, configurez :
+- Client ID
+- Client Secret
+- redirect URI locale :
+
+```text
+http://localhost:3000/api/auth/callback/discord
 ```
 
-### 1. Configuration sur le Portail Discord
-1. Rendez-vous sur le [Discord Developer Portal](https://discord.com/developers/applications) et cliquez sur **New Application**.
-2. Allez dans l'onglet **Bot** :
-   - Cliquez sur **Reset Token** et copiez votre Token.
-   - **Important** : Dans la section **Privileged Gateway Intents**, cochez :
-     - ✅ **Server Members Intent**
-     - ✅ **Message Content Intent**
-3. Allez dans l'onglet **OAuth2** :
-   - Copiez le **Client ID** et le **Client Secret**.
-   - Dans **Redirects**, ajoutez l'URL suivante :
-     ```
-     http://localhost:3000/api/auth/callback/discord
-     ```
-4. Invitez le bot sur votre serveur de test avec les scopes `bot` et `applications.commands`. Accordez uniquement les permissions nécessaires : Voir les salons, Envoyer des messages, Lire l'historique des messages, Intégrer des liens, Gérer les salons, Gérer les rôles, Gérer les messages, Bannir des membres, Expulser des membres et Modérer les membres. N'accordez pas `Administrator`.
+Puis invitez le bot avec les permissions minimales nécessaires, sans utiliser `Administrator`.
 
-### 2. Configuration du fichier `.env`
-Copiez le modèle à la racine du dépôt, puis renseignez vos identifiants dans `.env` :
-```powershell
-Copy-Item .env.example .env
+---
+
+## Variables d’environnement
+
+Copiez le modèle puis personnalisez-le :
+
+```bash
+cp .env.example .env
 ```
+
+Exemple de contenu :
 
 ```env
 DISCORD_TOKEN="votre_token_ici"
@@ -96,45 +141,94 @@ NEXTAUTH_SECRET="une_cle_secrete_aleatoire_de_plus_de_32_caracteres"
 DATABASE_URL="file:../../dev.db"
 ```
 
-### 3. Initialiser la Base de Données
-Générez le client Prisma (également exécuté automatiquement par `pnpm install`), puis créez/actualisez le schéma SQLite :
-```powershell
-pnpm db:generate
-pnpm db:push
-```
-*(Optionnel) Pour visualiser la base dans votre navigateur : `pnpm db:studio`*
-
-> `pnpm db:generate` est l'alias racine de `pnpm --filter @bot/database generate`. Le workspace expose le script `generate` (et non un script `prisma`).
-
-### 4. Lancer le Dashboard Web
-```powershell
-pnpm dev:dashboard
-```
-Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
-
-### 5. Lancer le Bot Discord
-Dans un autre terminal :
-```powershell
-pnpm dev:bot
-```
-
-### Autres commandes disponibles
-À lancer depuis la racine du dépôt :
-
-| Commande | Action |
-| --- | --- |
-| `pnpm dev:dashboard` | Lance le dashboard en développement sur le port 3000. |
-| `pnpm dev:bot` | Lance le bot en mode développement avec rechargement. |
-| `pnpm dev` | Alias actuel de `pnpm dev:bot` ; ne lance pas le dashboard. |
-| `pnpm build` | Compile les workspaces database, bot et dashboard. |
-| `pnpm build:bot` | Compile le bot. |
-| `pnpm build:dashboard` | Compile le dashboard. |
-| `pnpm --filter @bot/core start` | Démarre le bot compilé ; exécuter un build auparavant. |
-| `pnpm --filter @bot/dashboard start` | Démarre le dashboard compilé ; exécuter un build auparavant. |
-
-Pour une utilisation locale complète, laissez le bot et le dashboard tourner dans deux terminaux distincts. Les migrations versionnées et le déploiement de production restent à définir ; `pnpm db:push` est prévu ici pour le développement local.
+> Le fichier `.env` est destiné au développement local et ne doit pas être partagé publiquement.
 
 ---
 
-## 🎨 Thème
-Le dashboard Bloomera utilise actuellement un **fond sombre zinc avec des accents ambre**. Les couleurs Discord et les couleurs de fond sont définies dans `apps/dashboard/tailwind.config.ts` et `apps/dashboard/src/app/globals.css` ; plusieurs accents ambre sont appliqués directement dans les composants.
+## Installation
+
+```bash
+pnpm install
+```
+
+---
+
+## Base de données
+
+Générer le client Prisma et synchroniser le schéma SQLite :
+
+```bash
+pnpm db:generate
+pnpm db:push
+```
+
+Pour visualiser la base localement :
+
+```bash
+pnpm db:studio
+```
+
+---
+
+## Lancer le projet
+
+### Dashboard
+
+```bash
+pnpm dev:dashboard
+```
+
+Ouvrez :
+
+```text
+http://localhost:3000
+```
+
+### Bot
+
+Dans un autre terminal :
+
+```bash
+pnpm dev:bot
+```
+
+---
+
+## Commandes disponibles
+
+Depuis la racine du dépôt :
+
+| Commande | Description |
+| --- | --- |
+| `pnpm dev` | Lance le bot seulement |
+| `pnpm dev:bot` | Lance le bot en mode développement |
+| `pnpm dev:dashboard` | Lance le dashboard |
+| `pnpm build` | Build complet du monorepo |
+| `pnpm build:bot` | Build du bot |
+| `pnpm build:dashboard` | Build du dashboard |
+| `pnpm db:generate` | Génère le client Prisma |
+| `pnpm db:push` | Synchronise le schéma Prisma vers SQLite |
+| `pnpm db:studio` | Ouvre Prisma Studio |
+
+---
+
+## Notes importantes
+
+- Ce projet est en évolution continue et la documentation ainsi que les fichiers de configuration doivent rester alignés avec l’état réel du code.
+- Le dashboard et le bot fonctionnent mieux en local dans deux terminaux séparés.
+- Les migrations versionnées de production ne sont pas encore complétement mises en place ; pour le moment, `db:push` est utilisé dans un cadre de développement local.
+
+---
+
+## Thème visuel
+
+Le dashboard utilise actuellement une palette sombre avec des accents ambrés et des surfaces zincées, afin d’apporter un style plus premium et plus lisible.
+
+---
+
+## Ressources utiles
+
+- [AGENTS.md](./AGENTS.md)
+- [CHANGELOG.md](./CHANGELOG.md)
+- [TODO.md](./TODO.md)
+
