@@ -6,7 +6,8 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "pnpm --filter @bot/database build && TSX_TSCONFIG_PATH=../dashboard/tsconfig.json pnpm --filter @bot/core exec node --experimental-test-module-mocks --import tsx --test ../dashboard/tests/*.test.ts"
   },
   "dependencies": {
     "@bot/database": "workspace:*",

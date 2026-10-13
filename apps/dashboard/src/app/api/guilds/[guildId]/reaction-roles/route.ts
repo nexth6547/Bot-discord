@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@bot/database";
 import {
   authorizeGuild,
+  ensureGuildConfig,
   internalError,
   readJsonObject,
   validateConfig,
@@ -62,6 +63,8 @@ export async function POST(
       targetRoleId: data.targetRoleId,
     });
     if (referenceError) return referenceError;
+
+    await ensureGuildConfig(access.guild);
 
     const botToken = process.env.DISCORD_TOKEN;
     if (!botToken) {

@@ -7,6 +7,24 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.25] - 2026-10-13 - Tests d'autorisation des routes guild
+
+### Ajouté [Effectué]
+- **Dashboard API** : matrice d'autorisation automatisée pour chaque route et méthode sous `/api/guilds/[guildId]`, avec sessions/Discord mockés et une base SQLite temporaire distincte par test.
+- **DELETE rôles interactifs** : test d'un ID d'objet appartenant à une autre guild et vérification qu'il reste en base.
+
+### Modifié [Effectué]
+- **Tests/CI** : exécution des tests de routes avec les mocks natifs Node et passage de la CI à Node 24.
+- **TODO** : preuve automatisée ajoutée à la ligne de la protection des routes ; validation OAuth réelle laissée en attente.
+
+### Corrigé [Résolu]
+- **Rôles interactifs** : le POST crée désormais la configuration parente de la guild avant l'enregistrement du panneau, évitant une erreur de clé étrangère lors de la première création.
+
+### Notes Techniques
+- Aucune dépendance ajoutée et aucune base locale utilisée ; le schéma est poussé uniquement vers chaque SQLite temporaire de test.
+
+---
+
 ## [1.0.24] - 2026-10-12 - Préparation de la base avant les tests
 
 ### Corrigé [Effectué]
