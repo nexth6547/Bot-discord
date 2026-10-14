@@ -9,7 +9,16 @@ import {
   OverwriteResolvable,
   Guild,
 } from "discord.js";
-import prisma, { Prisma } from "@bot/database";
+import prisma from "@bot/database";
+
+function isUniqueConstraintError(error: unknown): error is { code: "P2002" } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2002"
+  );
+}
 
 export class TicketService {
   public static async reconcileClosingTickets(guild: Guild) {
@@ -238,7 +247,7 @@ export class TicketService {
         return;
       }
 
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      if (isUniqueConstraintError(err)) {
         try {
           const activeTicket = await prisma.ticket.findFirst({
             where: {

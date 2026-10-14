@@ -76,7 +76,6 @@ export async function POST(
   }
 
   try {
-    await ensureGuildConfig(access.guild);
     const body = await readJsonObject(request);
     const data = body && validateConfig(body, fields);
     if (
@@ -151,6 +150,7 @@ export async function POST(
       newlyCreated = true;
     }
     try {
+      await ensureGuildConfig(access.guild);
       await prisma.ticketConfig.upsert({
         where: { guildId: params.guildId },
         create: {

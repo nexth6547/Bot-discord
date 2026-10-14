@@ -7,6 +7,25 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.27] - 2026-10-14 - Robustesse du cycle de vie des tickets
+
+### Ajouté [Effectué]
+- **Tests dashboard** : couverture de la route POST `/tickets/publish` avec SQLite temporaire et Discord mocké : payload invalide, salon absent/hors guild, salon de mauvais type, permissions bot insuffisantes et échec d'envoi ; vérification d'absence d'écriture lors des refus.
+- **Tests bot** : tests du vrai `TicketService` avec base SQLite temporaire pour double clic et créations simultanées, unicité du ticket actif, échecs de création Discord/SQLite, fermeture concurrente, restauration après refus Discord et autorisations de fermeture.
+
+### Corrigé [Résolu]
+- **Dashboard API tickets** : `GuildConfig` n'est plus créé avant la validation du payload, des références Discord et l'envoi réussi du panneau ; un refus ou échec d'envoi ne laisse pas d'écriture de configuration.
+- **Bot tickets** : détection du conflit Prisma `P2002` basée sur son code d'erreur stable plutôt que sur `instanceof`, pour traiter le conflit d'unicité SQLite et retrouver le ticket gagnant lors de créations simultanées.
+
+### Modifié [Effectué]
+- **TODO** : preuves automatisées datées ajoutées aux validations du cycle de vie, de publication et d'autorisation des tickets. La fonctionnalité de réclamation n'existe actuellement pas (aucun bouton/handler `ticket_claim`) ; le test confirme qu'elle ne modifie pas l'état, sans revendiquer une validation d'autorisation d'une fonction absente.
+
+### Notes Techniques
+- Aucun nouvel outil ou dépendance ; DB SQLite temporaire par test, mocks Discord uniquement, aucune migration, aucune base locale ni appel réseau réel.
+- **Validation locale (14 octobre 2026)** : `pnpm test` (166 tests réussis : 146 dashboard, 20 bot), `pnpm lint` et `pnpm build` réussis. Le build garde les avertissements OAuth attendus tant que les identifiants locaux ne sont pas renseignés.
+
+---
+
 ## [1.0.26] - 2026-10-14 - Validation des payloads de configuration
 
 ### Ajouté [Effectué]
