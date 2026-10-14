@@ -85,6 +85,7 @@ La connexion OAuth avec un vrai compte, l'accès à des serveurs réels et les c
 
 ## P1 — Démarrage et exploitation automatiques
 
+- [ ] Rétablir la signature des commits dans le Codespace. **À diagnostiquer puis valider :** le commit signé échoue actuellement car le signataire Codespaces ne trouve pas de clé secrète GPG (`No secret key`) ; réparer l'accès/la configuration du signataire sans désactiver la signature, puis créer et vérifier un commit signé avec `git log -1 --show-signature`. Ne pas pousser sans validation explicite.
 - [ ] Ajouter une commande de développement unique lançant bot et dashboard ensemble avec arrêt propre. **Implémenté en partie :** `pnpm dev:all` démarre bien les deux workspaces ; le bot ferme Discord/Prisma sur SIGINT/SIGTERM. **Validation restante :** confirmer avec une interruption normale de terminal l'arrêt de pnpm et des deux sous-processus sans processus orphelin.
 - [ ] Définir la cible de déploiement et une configuration reproductible (service Windows/Linux ou conteneurs), variables, build production et démarrage. **À décider/réaliser :** choisir l'hébergeur et système, fournir configuration sans secret, puis exécuter le déploiement sur environnement de préproduction.
 - [ ] Préparer dashboard sur Vercel et bot sur un hébergeur de processus persistant, jamais en serverless. **À réaliser puis valider :** déployer les deux composants séparément et confirmer que le bot reste connecté/revient après redémarrage.

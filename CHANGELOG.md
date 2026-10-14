@@ -7,6 +7,13 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [Non versionné] - 2026-10-14 - Suivi de la signature Git
+
+### Ajouté [En attente]
+- **TODO** : suivi du rétablissement et de la validation de la signature des commits dans le Codespace ; la signature ne doit pas être désactivée.
+
+---
+
 ## [1.0.25] - 2026-10-13 - Tests d'autorisation des routes guild
 
 ### Ajouté [Effectué]
