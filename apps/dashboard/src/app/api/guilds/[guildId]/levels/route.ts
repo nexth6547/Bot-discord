@@ -63,7 +63,6 @@ export async function POST(
   if (!access.ok) return access.response;
 
   try {
-    await ensureGuildConfig(access.guild);
     const body = await readJsonObject(request);
     const data = body && validateConfig(body, fields);
     if (!data) return invalidConfig();
@@ -79,6 +78,7 @@ export async function POST(
       return invalidConfig();
     }
 
+    await ensureGuildConfig(access.guild);
     const updated = await prisma.levelConfig.upsert({
       where: { guildId: params.guildId },
       create: {

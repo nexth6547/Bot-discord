@@ -7,6 +7,24 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.26] - 2026-10-14 - Validation des payloads de configuration
+
+### Ajouté [Effectué]
+- **Dashboard API** : tests de refus des POST logs, moderation, welcome, levels, tickets et reaction-roles pour données inconnues/manquantes, mauvais types, snowflakes/références hors guild, limites, bornes XP et JSON invalide ; chaque refus vérifie qu'aucune donnée n'est écrite dans une SQLite temporaire.
+- **Bot** : tests mockés de `allowedMentions` pour les messages de bienvenue, de départ et d'annonce XP.
+
+### Corrigé [Résolu]
+- **Dashboard API** : les POST de configuration ne créent/synchronisent plus `GuildConfig` avant la validation du payload et des références Discord ; un payload refusé ne laisse donc pas d'écriture partielle.
+
+### Modifié [Effectué]
+- **TODO** : preuves des tests automatisés ajoutées pour les six routes ciblées et la politique de mentions ; les essais sur un vrai serveur Discord restent ouverts.
+
+### Notes Techniques
+- Aucun nouvel outil ou dépendance ; aucun appel réseau Discord réel ni accès à la base locale.
+- **Validation locale (14 octobre 2026)** : `pnpm test` (144 tests réussis), `pnpm lint` et `pnpm build` réussis. Les avertissements OAuth en build restent attendus tant que la configuration locale n'est pas renseignée.
+
+---
+
 ## [Non versionné] - 2026-10-14 - Suivi de la signature Git
 
 ### Ajouté [En attente]

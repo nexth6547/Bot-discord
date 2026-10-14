@@ -61,13 +61,13 @@ export async function POST(
   if (!access.ok) return access.response;
 
   try {
-    await ensureGuildConfig(access.guild);
     const body = await readJsonObject(request);
     const data = body && validateConfig(body, fields);
     if (!data) return invalidConfig();
     const referenceError = await validateGuildReferences(params.guildId, data);
     if (referenceError) return referenceError;
 
+    await ensureGuildConfig(access.guild);
     const updated = await prisma.ticketConfig.upsert({
       where: { guildId: params.guildId },
       create: {

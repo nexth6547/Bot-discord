@@ -211,6 +211,30 @@ async function invoke(
   );
 }
 
+function makeRawPostRequest(path: string, body: string | undefined): Request {
+  return new Request(`http://localhost/api/guilds/${GUILD_ID}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    ...(body === undefined ? {} : { body }),
+  });
+}
+
+async function assertNoGuildWrites(client: PrismaClient): Promise<void> {
+  const counts = await Promise.all([
+    client.guildConfig.count(),
+    client.logConfig.count(),
+    client.modConfig.count(),
+    client.welcomeConfig.count(),
+    client.levelConfig.count(),
+    client.ticketConfig.count(),
+    client.reactionRole.count(),
+    client.ticket.count(),
+    client.userLevel.count(),
+    client.sanction.count(),
+  ]);
+  assert.deepEqual(counts, Array(counts.length).fill(0), "invalid POST must not write any guild data");
+}
+
 async function seedReactionRole(
   client: PrismaClient,
   id: string,
@@ -345,6 +369,164 @@ test("every /api/guilds/[guildId] route method enforces the authorization matrix
               await client.reactionRole.findUnique({ where: { id: "foreign-reaction-role" } }),
               "the foreign guild's object must remain in the database"
             );
+          }
+        });
+
+        test("configuration POST routes reject invalid payloads without writing to SQLite", async (t) => {
+          const validationRoutes: Array<{
+            path: string;
+            module: RouteModule;
+            valid: Record<string, unknown>;
+            typeField: string;
+            invalidSnowflakes: string[];
+            foreignReferences: Array<{ key: string; value: string }>;
+            outOfBounds?: Record<string, unknown>;
+            inconsistentBounds?: Record<string, number>;
+            missingRequired?: Record<string, unknown>;
+          }> = [
+            {
+              path: "/logs",
+              module: await import("../src/app/api/guilds/[guildId]/logs/route"),
+              valid: { enabled: true },
+              typeField: "enabled",
+              invalidSnowflakes: ["modLogChannelId"],
+              foreignReferences: [{ key: "modLogChannelId", value: "700000000000000001" }],
+            },
+            {
+              path: "/moderation",
+              module: await import("../src/app/api/guilds/[guildId]/moderation/route"),
+              valid: { autoModAntiLink: true },
+              typeField: "autoModAntiLink",
+              invalidSnowflakes: ["modRoleId"],
+              foreignReferences: [{ key: "modRoleId", value: "700000000000000002" }],
+            },
+            {
+              path: "/welcome",
+              module: await import("../src/app/api/guilds/[guildId]/welcome/route"),
+              valid: { enabled: false },
+              typeField: "enabled",
+              invalidSnowflakes: ["channelId", "autoRoleId"],
+              foreignReferences: [
+                { key: "channelId", value: "700000000000000003" },
+                { key: "autoRoleId", value: "700000000000000004" },
+              ],
+              outOfBounds: {
+                message: "x".repeat(2001),
+                embedTitle: "x".repeat(257),
+                leaveMessage: "x".repeat(2001),
+              },
+            },
+            {
+              path: "/levels",
+              module: await import("../src/app/api/guilds/[guildId]/levels/route"),
+              valid: { enabled: true },
+              typeField: "enabled",
+              invalidSnowflakes: ["announceChannelId"],
+              foreignReferences: [{ key: "announceChannelId", value: "700000000000000005" }],
+              outOfBounds: {
+                xpPerMessageMin: 0,
+                xpPerMessageMax: 1001,
+                cooldownSeconds: 86401,
+              },
+              inconsistentBounds: { xpPerMessageMin: 50, xpPerMessageMax: 49 },
+            },
+            {
+              path: "/tickets",
+              module: await import("../src/app/api/guilds/[guildId]/tickets/route"),
+              valid: { enabled: false },
+              typeField: "enabled",
+              invalidSnowflakes: ["categoryId", "supportRoleId"],
+              foreignReferences: [
+                { key: "categoryId", value: "700000000000000006" },
+                { key: "supportRoleId", value: "700000000000000007" },
+              ],
+              outOfBounds: {
+                panelTitle: "x".repeat(257),
+                panelDescription: "x".repeat(4001),
+                buttonText: "x".repeat(81),
+              },
+            },
+            {
+              path: "/reaction-roles",
+              module: await import("../src/app/api/guilds/[guildId]/reaction-roles/route"),
+              valid: {
+                channelId: CHANNEL_ID,
+                targetRoleId: ROLE_ID,
+                label: "Get role",
+                emoji: "⭐",
+              },
+              typeField: "targetRoleId",
+              invalidSnowflakes: ["channelId", "targetRoleId"],
+              foreignReferences: [
+                { key: "channelId", value: "700000000000000008" },
+                { key: "targetRoleId", value: "700000000000000009" },
+              ],
+              outOfBounds: { label: "x".repeat(81), emoji: "x".repeat(33) },
+              missingRequired: {
+                channelId: CHANNEL_ID,
+                targetRoleId: ROLE_ID,
+                label: "Get role",
+              },
+            },
+          ];
+
+          for (const route of validationRoutes) {
+            await t.test(`POST /api/guilds/[guildId]${route.path}`, async (t) => {
+              await withTemporaryDatabase(async (client) => {
+                activeSession = { accessToken: "test-only-session-token" };
+                userPermissions = String(ADMINISTRATOR);
+                botIsInGuild = true;
+
+                const cases: Array<{ name: string; body: string | undefined }> = [
+                  {
+                    name: "unknown field",
+                    body: JSON.stringify({ ...route.valid, unexpected: true }),
+                  },
+                  { name: "missing configuration body", body: "{}" },
+                  { name: "wrong field type", body: JSON.stringify({ [route.typeField]: "not-a-valid-type" }) },
+                  ...route.invalidSnowflakes.map((key) => ({
+                    name: `invalid snowflake (${key})`,
+                    body: JSON.stringify({ [key]: "invalid-id" }),
+                  })),
+                  { name: "empty body", body: undefined },
+                  { name: "malformed JSON", body: "{not-json" },
+                  ...route.foreignReferences.map(({ key, value }) => ({
+                    name: `reference outside this guild (${key})`,
+                    body: JSON.stringify({ [key]: value }),
+                  })),
+                ];
+
+                if (route.outOfBounds) {
+                  for (const [key, value] of Object.entries(route.outOfBounds)) {
+                    cases.push({
+                      name: `out-of-bounds value (${key})`,
+                      body: JSON.stringify({ [key]: value }),
+                    });
+                  }
+                }
+                if (route.inconsistentBounds) {
+                  cases.push({
+                    name: "minimum XP exceeds maximum XP",
+                    body: JSON.stringify(route.inconsistentBounds),
+                  });
+                }
+                if (route.missingRequired) {
+                  cases.push({
+                    name: "missing required field",
+                    body: JSON.stringify(route.missingRequired),
+                  });
+                }
+
+                for (const invalidCase of cases) {
+                  const response = await getHandler(route.module, "POST")(
+                    makeRawPostRequest(route.path, invalidCase.body),
+                    { params: { guildId: GUILD_ID } }
+                  );
+                  assert.equal(response.status, 400, `${invalidCase.name} must be rejected`);
+                  await assertNoGuildWrites(client);
+                }
+              });
+            });
           }
         });
       });
