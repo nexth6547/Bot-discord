@@ -7,6 +7,22 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.30] - 2026-10-16 - Correction de l'issuer OAuth Discord
+
+### Corrigé [Résolu]
+- **Dashboard OAuth** : configuration de l'issuer Discord `https://discord.com` afin que NextAuth/openid-client accepte le paramètre `iss` renvoyé dans le callback OAuth.
+
+### Ajouté [Effectué]
+- **Test dashboard** : vérification que le provider Discord de `authOptions` conserve l'issuer attendu.
+
+### Modifié [Effectué]
+- **TODO** : suivi du parcours de connexion OAuth réel, restant à valider manuellement.
+
+### Notes Techniques
+- Aucune dépendance mise à jour ni ajoutée ; aucun appel réseau Discord effectué.
+
+---
+
 ## [1.0.29] - 2026-10-16 - Garde de l'emplacement du hook Next.js
 
 ### Ajouté [Effectué]
