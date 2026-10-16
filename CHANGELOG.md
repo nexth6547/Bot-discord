@@ -7,6 +7,26 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.28] - 2026-10-16 - Validation de l'environnement au démarrage
+
+### Ajouté [Effectué]
+- **Bot et dashboard** : tests des variables requises manquantes/vides, placeholders, secrets de session, callback OAuth, `DATABASE_URL` SQLite et snowflakes ; tests de configuration complète avec valeurs fictives.
+- **Dashboard API** : test de `GET /api/guilds` renvoyant `401` sans session et succès avec session valide, en mockant Discord et en utilisant une SQLite temporaire.
+- **Dashboard** : validation au démarrage via le hook d'instrumentation Next.js.
+
+### Corrigé [Résolu]
+- **Bot** : une configuration invalide échoue désormais au démarrage avec une erreur explicite en tout environnement, au lieu d'un simple avertissement et d'un retour silencieux hors production.
+- **Dashboard** : les variables OAuth auparavant seulement averties (et la base non vérifiée) sont maintenant validées et bloquent le démarrage si invalides ; les messages ne contiennent aucune valeur secrète.
+
+### Modifié [Effectué]
+- **TODO** : preuves automatisées datées ajoutées pour la configuration et `GET /api/guilds` ; validation OAuth réelle laissée ouverte.
+
+### Notes Techniques
+- Aucune dépendance ajoutée, aucune migration ni base locale ; les tests de routes utilisent uniquement des mocks et des bases SQLite temporaires. Les validations réutilisent les primitives TypeScript déjà présentes.
+- **Validation locale (16 octobre 2026)** : `pnpm test`, `pnpm lint` et `pnpm build` réussis. Les appels Discord réels et la configuration de callback du portail OAuth restent à valider manuellement.
+
+---
+
 ## [1.0.27] - 2026-10-14 - Robustesse du cycle de vie des tickets
 
 ### Ajouté [Effectué]

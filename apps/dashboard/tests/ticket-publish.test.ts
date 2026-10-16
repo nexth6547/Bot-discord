@@ -51,6 +51,8 @@ process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID = "900000000000000001";
 process.env.DISCORD_CLIENT_SECRET = "test-only-client-secret-value";
 process.env.NEXTAUTH_SECRET = "test-only-secret-value-with-more-than-32-characters";
 process.env.NEXTAUTH_URL = "http://localhost:3000";
+process.env.DISCORD_REDIRECT_URI = "http://localhost:3000/api/auth/callback/discord";
+process.env.DATABASE_URL = "file:./test.db";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {

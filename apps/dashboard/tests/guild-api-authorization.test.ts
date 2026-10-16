@@ -53,6 +53,8 @@ process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID = testClientId;
 process.env.DISCORD_CLIENT_SECRET = "test-only-client-secret-value";
 process.env.NEXTAUTH_SECRET = "test-only-secret-value-with-more-than-32-characters";
 process.env.NEXTAUTH_URL = "http://localhost:3000";
+process.env.DISCORD_REDIRECT_URI = "http://localhost:3000/api/auth/callback/discord";
+process.env.DATABASE_URL = "file:./test.db";
 
 const successBodies: Record<string, Record<string, unknown>> = {
   "POST /tickets": { enabled: false },
@@ -259,6 +261,48 @@ async function seedReactionRole(
 }
 
 setDiscordMocks();
+
+test("GET /api/guilds requires a session and returns manageable guilds for a valid session", async (t) => {
+  const route = await import("../src/app/api/guilds/route");
+  const previousSession = activeSession;
+  const previousFetch = globalThis.fetch;
+  t.after(() => {
+    activeSession = previousSession;
+    globalThis.fetch = previousFetch;
+  });
+
+  activeSession = null;
+  const unauthorized = await route.GET();
+  assert.equal(unauthorized.status, 401);
+
+  await withTemporaryDatabase(async () => {
+    activeSession = { accessToken: "test-only-session-token" };
+    globalThis.fetch = async () =>
+      jsonResponse([
+        {
+          id: GUILD_ID,
+          name: "Authorized test guild",
+          icon: null,
+          permissions: String(ADMINISTRATOR),
+          approximate_member_count: 4,
+        },
+      ]);
+
+    const authorized = await route.GET();
+    assert.equal(authorized.status, 200);
+    assert.deepEqual(await authorized.json(), {
+      guilds: [
+        {
+          id: GUILD_ID,
+          name: "Authorized test guild",
+          icon: null,
+          approximateMemberCount: 4,
+          botPresent: false,
+        },
+      ],
+    });
+  });
+});
 
 test("every /api/guilds/[guildId] route method enforces the authorization matrix", async (t) => {
   const [

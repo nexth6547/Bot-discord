@@ -35,12 +35,6 @@ async function main() {
   console.log("🚀 Initialisation du Bot Discord...");
   assertBotEnvironment();
 
-  if (!config.token || config.token === "YOUR_BOT_TOKEN_HERE") {
-    console.log("ℹ️ En attente de la configuration du token dans le fichier .env pour se connecter à Discord.");
-    console.log("👉 Renseignez DISCORD_TOKEN dans .env puis redémarrez le bot.");
-    return;
-  }
-
   const client = new BotClient();
   await client.db.$connect();
 

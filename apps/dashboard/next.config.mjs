@@ -6,6 +6,10 @@ const dashboardDirectory = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(dashboardDirectory, "../../.env") });
 
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
+const nextConfig = {
+  experimental: {
+    instrumentationHook: true,
+  },
+};
 
 export default nextConfig;
