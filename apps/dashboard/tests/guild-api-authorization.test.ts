@@ -262,6 +262,151 @@ async function seedReactionRole(
 
 setDiscordMocks();
 
+test("Discord failures log diagnostics without logging bot or OAuth tokens", async (t) => {
+  const resourcesRoute = await import("../src/app/api/guilds/[guildId]/resources/route");
+  const guildsRoute = await import("../src/app/api/guilds/route");
+  const previousSession = activeSession;
+  const previousFetch = globalThis.fetch;
+  const botToken = process.env.DISCORD_TOKEN!;
+  const oauthToken = "test-only-session-token-for-diagnostics";
+
+  t.after(() => {
+    activeSession = previousSession;
+    globalThis.fetch = previousFetch;
+  });
+
+  async function captureLogs(run: () => Promise<Response>) {
+    const logEntries: string[] = [];
+    const errorMock = mock.method(console, "error", (...args: unknown[]) => {
+      logEntries.push(args.map((argument) =>
+        typeof argument === "string" ? argument : JSON.stringify(argument)
+      ).join(" "));
+    });
+    try {
+      const response = await run();
+      return { response, logs: logEntries.join("\n") };
+    } finally {
+      errorMock.mock.restore();
+    }
+  }
+
+  function setResourceFetch(failure: "429" | "403" | "500" | "network") {
+    globalThis.fetch = async (input) => {
+      const pathname = new URL(String(input)).pathname;
+      if (pathname === "/api/v10/users/@me/guilds") {
+        return jsonResponse([{
+          id: GUILD_ID,
+          name: "Diagnostics test guild",
+          icon: null,
+          permissions: String(ADMINISTRATOR),
+          owner: false,
+        }]);
+      }
+      if (pathname === `/api/v10/guilds/${GUILD_ID}`) {
+        if (failure === "403") {
+          return jsonResponse({ code: 50001, message: "Missing Access" }, 403);
+        }
+        return jsonResponse({ id: GUILD_ID });
+      }
+      if (pathname === `/api/v10/guilds/${GUILD_ID}/channels`) {
+        if (failure === "network") {
+          throw new Error(`Injected network failure ${botToken}`);
+        }
+        if (failure === "429") {
+          return new Response(JSON.stringify({ code: 20028, message: "Rate limited" }), {
+            status: 429,
+            headers: { "Content-Type": "application/json", "Retry-After": "2.5" },
+          });
+        }
+        if (failure === "500") {
+          return jsonResponse({ code: 50013, message: "Missing Permissions" }, 500);
+        }
+      }
+      if (pathname === `/api/v10/guilds/${GUILD_ID}/roles`) {
+        return jsonResponse([]);
+      }
+      if (pathname === `/api/v10/guilds/${GUILD_ID}/members/@me`) {
+        return jsonResponse({ roles: [] });
+      }
+      throw new Error(`Unexpected diagnostics request: ${pathname}`);
+    };
+  }
+
+  activeSession = { accessToken: oauthToken };
+
+  await t.test("429 logs status, JSON details and Retry-After", async () => {
+    setResourceFetch("429");
+    const { response, logs } = await captureLogs(() =>
+      resourcesRoute.GET(
+        new Request(`http://localhost/api/guilds/${GUILD_ID}/resources`),
+        { params: { guildId: GUILD_ID } }
+      )
+    );
+    assert.equal(response.status, 502);
+    assert.match(logs, /429/);
+    assert.match(logs, /20028/);
+    assert.match(logs, /Rate limited/);
+    assert.match(logs, /2\.5/);
+    assert.ok(!logs.includes(botToken));
+    assert.ok(!logs.includes(oauthToken));
+  });
+
+  await t.test("403 logs its status without changing the response", async () => {
+    setResourceFetch("403");
+    const { response, logs } = await captureLogs(() =>
+      resourcesRoute.GET(
+        new Request(`http://localhost/api/guilds/${GUILD_ID}/resources`),
+        { params: { guildId: GUILD_ID } }
+      )
+    );
+    assert.equal(response.status, 403);
+    assert.match(logs, /403/);
+    assert.match(logs, /Missing Access/);
+    assert.ok(!logs.includes(botToken));
+    assert.ok(!logs.includes(oauthToken));
+  });
+
+  await t.test("500 logs status and Discord error body", async () => {
+    setResourceFetch("500");
+    const { response, logs } = await captureLogs(() =>
+      resourcesRoute.GET(
+        new Request(`http://localhost/api/guilds/${GUILD_ID}/resources`),
+        { params: { guildId: GUILD_ID } }
+      )
+    );
+    assert.equal(response.status, 502);
+    assert.match(logs, /500/);
+    assert.match(logs, /50013/);
+    assert.match(logs, /Missing Permissions/);
+    assert.ok(!logs.includes(botToken));
+    assert.ok(!logs.includes(oauthToken));
+  });
+
+  await t.test("network exceptions log name and message with credentials redacted", async () => {
+    globalThis.fetch = async () => {
+      throw new Error(`Injected network failure ${botToken} ${oauthToken}`);
+    };
+    const { response, logs } = await captureLogs(() => guildsRoute.GET());
+    assert.equal(response.status, 502);
+    assert.match(logs, /Error/);
+    assert.match(logs, /Injected network failure/);
+    assert.ok(!logs.includes(botToken));
+    assert.ok(!logs.includes(oauthToken));
+  });
+
+  await t.test("guild-list HTTP failures include status and redact OAuth token", async () => {
+    globalThis.fetch = async () =>
+      jsonResponse({ code: 50301, message: "Discord overloaded" }, 500);
+    const { response, logs } = await captureLogs(() => guildsRoute.GET());
+    assert.equal(response.status, 502);
+    assert.match(logs, /500/);
+    assert.match(logs, /50301/);
+    assert.match(logs, /Discord overloaded/);
+    assert.ok(!logs.includes(botToken));
+    assert.ok(!logs.includes(oauthToken));
+  });
+});
+
 test("GET /api/guilds requires a session and returns manageable guilds for a valid session", async (t) => {
   const route = await import("../src/app/api/guilds/route");
   const previousSession = activeSession;

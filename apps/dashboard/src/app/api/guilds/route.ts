@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import prisma from "@bot/database";
 import { assertDashboardEnvironment, authOptions } from "@/lib/auth";
+import { logDiscordException, logDiscordHttpFailure } from "@/lib/guild-access";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,7 @@ export async function GET() {
       return NextResponse.json({ error: "SESSION_EXPIRED" }, { status: 401 });
     }
     if (!discordResponse.ok) {
+      await logDiscordHttpFailure("GET /api/guilds", discordResponse, [session.accessToken]);
       return NextResponse.json({ error: "DISCORD_UNAVAILABLE" }, { status: 502 });
     }
 
@@ -64,7 +66,7 @@ export async function GET() {
       })),
     });
   } catch (error) {
-    console.error("Discord guild list request failed:", error);
+    logDiscordException("GET /api/guilds", error, [session.accessToken]);
     return NextResponse.json({ error: "GUILDS_UNAVAILABLE" }, { status: 502 });
   }
 }

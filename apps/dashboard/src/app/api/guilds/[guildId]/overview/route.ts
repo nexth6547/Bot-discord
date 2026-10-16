@@ -4,6 +4,7 @@ import {
   authorizeGuild,
   ensureGuildConfig,
   internalError,
+  logDiscordHttpFailure,
 } from "@/lib/guild-access";
 
 interface DiscordGuildCounts {
@@ -36,7 +37,11 @@ export async function GET(
     ]);
 
     if (!discordResponse.ok) {
-      console.error("Discord guild count request failed:", discordResponse.status);
+      await logDiscordHttpFailure(
+        "GET /api/guilds/[guildId]/overview",
+        discordResponse,
+        [botToken]
+      );
       return NextResponse.json({ error: "DISCORD_UNAVAILABLE" }, { status: 502 });
     }
 

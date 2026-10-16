@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { authorizeGuild } from "@/lib/guild-access";
+import {
+  authorizeGuild,
+  logDiscordException,
+  logDiscordHttpFailure,
+} from "@/lib/guild-access";
 
 interface DiscordChannel {
   id: string;
@@ -50,11 +54,19 @@ export async function GET(
     ]);
 
     if (!channelsResponse.ok || !rolesResponse.ok || !memberResponse.ok) {
-      console.error("Discord guild resources request failed:", {
-        channels: channelsResponse.status,
-        roles: rolesResponse.status,
-        member: memberResponse.status,
-      });
+      for (const [name, response] of [
+        ["channels", channelsResponse],
+        ["roles", rolesResponse],
+        ["member", memberResponse],
+      ] as const) {
+        if (!response.ok) {
+          await logDiscordHttpFailure(
+            `GET /api/guilds/[guildId]/resources ${name}`,
+            response,
+            [botToken]
+          );
+        }
+      }
       return NextResponse.json({ error: "DISCORD_UNAVAILABLE" }, { status: 502 });
     }
 
@@ -90,7 +102,7 @@ export async function GET(
         : [],
     });
   } catch (error) {
-    console.error("Discord guild resource loading failed:", error);
+    logDiscordException("GET /api/guilds/[guildId]/resources", error, [botToken]);
     return NextResponse.json({ error: "DISCORD_UNAVAILABLE" }, { status: 502 });
   }
 }

@@ -7,6 +7,61 @@ const ADMINISTRATOR = 1n << 3n;
 const MANAGE_GUILD = 1n << 5n;
 const SNOWFLAKE_PATTERN = /^\d{17,20}$/;
 
+function redactDiagnosticText(value: string, additionalSecrets: string[] = []): string {
+  const secrets = [...Object.values(process.env), ...additionalSecrets]
+    .filter((secret): secret is string => typeof secret === "string" && secret.length > 0)
+    .sort((left, right) => right.length - left.length);
+
+  return secrets.reduce((text, secret) => text.split(secret).join("[REDACTED]"), value);
+}
+
+export async function logDiscordHttpFailure(
+  operation: string,
+  response: Response,
+  additionalSecrets: string[] = []
+): Promise<void> {
+  const details: Record<string, string | number> = { status: response.status };
+
+  try {
+    const body: unknown = await response.clone().json();
+    if (body && typeof body === "object") {
+      const errorBody = body as { code?: unknown; message?: unknown };
+      if (typeof errorBody.code === "number") {
+        details.code = errorBody.code;
+      } else if (typeof errorBody.code === "string") {
+        details.code = redactDiagnosticText(errorBody.code, additionalSecrets);
+      }
+      if (typeof errorBody.message === "string") {
+        details.message = redactDiagnosticText(errorBody.message, additionalSecrets);
+      }
+    }
+  } catch {
+    // Discord may return a non-JSON error body; status remains useful on its own.
+  }
+
+  if (response.status === 429) {
+    const retryAfter = response.headers.get("Retry-After");
+    if (retryAfter) {
+      details.retryAfter = redactDiagnosticText(retryAfter, additionalSecrets);
+    }
+  }
+
+  console.error(`[${operation}] Discord HTTP request failed`, details);
+}
+
+export function logDiscordException(
+  operation: string,
+  error: unknown,
+  additionalSecrets: string[] = []
+): void {
+  const name = error instanceof Error ? error.name : typeof error;
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`[${operation}] Discord request exception`, {
+    name: redactDiagnosticText(name, additionalSecrets),
+    message: redactDiagnosticText(message, additionalSecrets),
+  });
+}
+
 interface DiscordGuild {
   id: string;
   name: string;
@@ -147,6 +202,11 @@ export async function authorizeGuild(guildId: string): Promise<GuildAccess> {
       };
     }
     if (!userGuildsResponse.ok) {
+      await logDiscordHttpFailure(
+        "authorizeGuild user guild list",
+        userGuildsResponse,
+        [session.accessToken, botToken]
+      );
       return {
         ok: false,
         response: NextResponse.json({ error: "DISCORD_UNAVAILABLE" }, { status: 502 }),
@@ -190,6 +250,13 @@ export async function authorizeGuild(guildId: string): Promise<GuildAccess> {
       }
     );
 
+    if (!botGuildResponse.ok) {
+      await logDiscordHttpFailure(
+        "authorizeGuild bot guild lookup",
+        botGuildResponse,
+        [botToken]
+      );
+    }
     if (botGuildResponse.status === 404 || botGuildResponse.status === 403) {
       return {
         ok: false,
@@ -205,7 +272,7 @@ export async function authorizeGuild(guildId: string): Promise<GuildAccess> {
 
     return { ok: true, guild };
   } catch (error) {
-    console.error("Discord guild authorization failed:", error);
+    logDiscordException("authorizeGuild", error, [session.accessToken, botToken]);
     return {
       ok: false,
       response: NextResponse.json({ error: "DISCORD_UNAVAILABLE" }, { status: 502 }),
@@ -222,7 +289,12 @@ export function invalidConfig(): NextResponse {
 }
 
 export function internalError(error: unknown, operation: string): NextResponse {
-  console.error(`${operation} failed:`, error);
+  const name = error instanceof Error ? error.name : typeof error;
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`${operation} failed:`, {
+    name: redactDiagnosticText(name),
+    message: redactDiagnosticText(message),
+  });
   return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
 }
 
@@ -361,6 +433,19 @@ export async function validateGuildReferences(
       rolesResponse && !rolesResponse.ok ||
       memberResponse && !memberResponse.ok
     ) {
+      for (const [name, response] of [
+        ["channels", channelsResponse],
+        ["roles", rolesResponse],
+        ["member", memberResponse],
+      ] as const) {
+        if (response && !response.ok) {
+          await logDiscordHttpFailure(
+            `validateDiscordReferences ${name}`,
+            response,
+            [botToken]
+          );
+        }
+      }
       return NextResponse.json({ error: "DISCORD_UNAVAILABLE" }, { status: 502 });
     }
 
@@ -465,7 +550,7 @@ export async function validateGuildReferences(
 
     return null;
   } catch (error) {
-    console.error("Discord reference validation failed:", error);
+    logDiscordException("validateDiscordReferences", error, [botToken]);
     return NextResponse.json({ error: "DISCORD_UNAVAILABLE" }, { status: 502 });
   }
 }

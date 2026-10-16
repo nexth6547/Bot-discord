@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { authorizeGuild, ensureGuildConfig, internalError } from "@/lib/guild-access";
+import {
+  authorizeGuild,
+  ensureGuildConfig,
+  internalError,
+  logDiscordHttpFailure,
+} from "@/lib/guild-access";
 
 interface DiscordChannel {
   id: string;
@@ -45,6 +50,18 @@ export async function GET(
     ]);
 
     if (!channelsResponse.ok || !rolesResponse.ok) {
+      for (const [name, response] of [
+        ["channels", channelsResponse],
+        ["roles", rolesResponse],
+      ] as const) {
+        if (!response.ok) {
+          await logDiscordHttpFailure(
+            `GET /api/guilds/[guildId]/server ${name}`,
+            response,
+            [botToken]
+          );
+        }
+      }
       return NextResponse.json({ error: "DISCORD_UNAVAILABLE" }, { status: 502 });
     }
 

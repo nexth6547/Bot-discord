@@ -7,6 +7,23 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.31] - 2026-10-16 - Diagnostic des échecs Discord du dashboard
+
+### Ajouté [Effectué]
+- **Dashboard API** : journalisation des statuts Discord, champs JSON `code`/`message`, `Retry-After` en cas de 429 et exceptions avec nom/message sur les chemins d'autorisation, ressources, aperçu, serveur et liste des guildes.
+- **Tests dashboard** : `fetch` mocké vérifiant les logs pour 429, 403, 500 et exception réseau, avec contrôle de l'absence des tokens bot/OAuth dans les sorties.
+
+### Corrigé [Résolu]
+- **Logs serveur** : les champs diagnostiques remplacent les valeurs d'environnement et tokens fournis par `[REDACTED]`; les réponses HTTP et corps d'erreur des routes restent inchangés.
+
+### Modifié [Effectué]
+- **TODO** : ajout du suivi pour identifier la cause réelle des 502 après collecte des diagnostics.
+
+### Notes Techniques
+- Aucune dépendance ajoutée, aucun serveur ou appel réseau réel; tests réalisés avec `fetch` mocké.
+
+---
+
 ## [1.0.30] - 2026-10-16 - Correction de l'issuer OAuth Discord
 
 ### Corrigé [Résolu]
