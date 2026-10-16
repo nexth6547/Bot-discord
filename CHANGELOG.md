@@ -7,6 +7,19 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.29] - 2026-10-16 - Garde de l'emplacement du hook Next.js
+
+### Ajouté [Effectué]
+- **Test dashboard** : vérification filesystem que `src/instrumentation.ts` existe, exporte `register()` et appelle `assertDashboardEnvironment()`, que le hook à la racine est absent et que `experimental.instrumentationHook` reste activé dans Next.js 14.
+
+### Modifié [Effectué]
+- **TODO** : ajout de la preuve de vérification manuelle du démarrage dashboard (distincte des tests automatisés) et des questions ouvertes sur HTTP local et la future validation PostgreSQL.
+
+### Notes Techniques
+- Aucun changement à la logique de validation ni au hook déplacé ; aucun serveur démarré, appel réseau ou dépendance ajoutée. Le test de régression inspecte uniquement les fichiers du workspace.
+
+---
+
 ## [1.0.28] - 2026-10-16 - Validation de l'environnement au démarrage
 
 ### Ajouté [Effectué]
