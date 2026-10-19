@@ -28,6 +28,7 @@ let activeSession: Session = null;
 let activePrisma: PrismaClient | undefined;
 let botIsInGuild = true;
 let userPermissions = String(ADMINISTRATOR);
+const memberRequestPaths: string[] = [];
 
 const prismaProxy = new Proxy(
   {},
@@ -134,7 +135,8 @@ function setDiscordMocks(): void {
       ]);
     }
 
-    if (url.pathname === `/api/v10/guilds/${GUILD_ID}/members/@me`) {
+    if (url.pathname.startsWith(`/api/v10/guilds/${GUILD_ID}/members/`)) {
+      memberRequestPaths.push(url.pathname);
       return jsonResponse({ user: { id: "600000000000000001" }, roles: ["500000000000000001"] });
     }
 
@@ -274,6 +276,31 @@ async function seedReactionRole(
 
 setDiscordMocks();
 
+test("resource route requests the bot member by configured bot ID", async (t) => {
+  const previousSession = activeSession;
+  t.after(() => {
+    activeSession = previousSession;
+  });
+
+  memberRequestPaths.length = 0;
+  activeSession = { accessToken: "test-only-session-token" };
+  userPermissions = String(ADMINISTRATOR);
+  botIsInGuild = true;
+
+  await withTemporaryDatabase(async () => {
+    const resourcesRoute = await import("../src/app/api/guilds/[guildId]/resources/route");
+    const response = await resourcesRoute.GET(
+      new Request(`http://localhost/api/guilds/${GUILD_ID}/resources`),
+      { params: { guildId: GUILD_ID } }
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(memberRequestPaths, [
+      `/api/v10/guilds/${GUILD_ID}/members/${testClientId}`,
+    ]);
+    assert.ok(memberRequestPaths.every((path) => !path.includes("@me")));
+  });
+});
+
 test("Discord failures log diagnostics without logging bot or OAuth tokens", async (t) => {
   const resourcesRoute = await import("../src/app/api/guilds/[guildId]/resources/route");
   const guildsRoute = await import("../src/app/api/guilds/route");
@@ -302,7 +329,7 @@ test("Discord failures log diagnostics without logging bot or OAuth tokens", asy
     }
   }
 
-  function setResourceFetch(failure: "429" | "403" | "500" | "network") {
+  function setResourceFetch(failure: "400" | "429" | "403" | "500" | "network") {
     clearDiscordApiCache();
     globalThis.fetch = async (input) => {
       const pathname = new URL(String(input)).pathname;
@@ -325,6 +352,9 @@ test("Discord failures log diagnostics without logging bot or OAuth tokens", asy
         if (failure === "network") {
           throw new Error(`Injected network failure ${botToken}`);
         }
+        if (failure === "400") {
+          return jsonResponse([]);
+        }
         if (failure === "429") {
           return new Response(JSON.stringify({ code: 20028, message: "Rate limited" }), {
             status: 429,
@@ -338,7 +368,16 @@ test("Discord failures log diagnostics without logging bot or OAuth tokens", asy
       if (pathname === `/api/v10/guilds/${GUILD_ID}/roles`) {
         return jsonResponse([]);
       }
-      if (pathname === `/api/v10/guilds/${GUILD_ID}/members/@me`) {
+      if (pathname === `/api/v10/guilds/${GUILD_ID}/members/${testClientId}`) {
+        if (failure === "400") {
+          return jsonResponse({
+            code: 50035,
+            message: "Invalid Form Body",
+            errors: {
+              user_id: { _errors: [{ code: "BASE_TYPE_REQUIRED", message: "Required" }] },
+            },
+          }, 400);
+        }
         return jsonResponse({ roles: [] });
       }
       throw new Error(`Unexpected diagnostics request: ${pathname}`);
@@ -377,6 +416,22 @@ test("Discord failures log diagnostics without logging bot or OAuth tokens", asy
     assert.equal(response.status, 403);
     assert.match(logs, /403/);
     assert.match(logs, /Missing Access/);
+    assert.ok(!logs.includes(botToken));
+    assert.ok(!logs.includes(oauthToken));
+  });
+
+  await t.test("400 logs Discord field names and codes without credentials", async () => {
+    clearDiscordApiCache();
+    setResourceFetch("400");
+    const { response, logs } = await captureLogs(() =>
+      resourcesRoute.GET(
+        new Request(`http://localhost/api/guilds/${GUILD_ID}/resources`),
+        { params: { guildId: GUILD_ID } }
+      )
+    );
+    assert.equal(response.status, 502);
+    assert.match(logs, /user_id/);
+    assert.match(logs, /BASE_TYPE_REQUIRED/);
     assert.ok(!logs.includes(botToken));
     assert.ok(!logs.includes(oauthToken));
   });

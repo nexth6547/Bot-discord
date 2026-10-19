@@ -46,6 +46,10 @@ function retryAfterMilliseconds(response: Response): number {
   return Number.isNaN(date) ? 0 : Math.max(0, date - Date.now());
 }
 
+export function discordGuildBotMemberUrl(guildId: string): string {
+  return `https://discord.com/api/v10/guilds/${guildId}/members/${process.env.DISCORD_CLIENT_ID}`;
+}
+
 function requestKey(url: string, init: RequestInit): string {
   const headers = new Headers(init.headers);
   const authorization = headers.get("Authorization") ?? "";
@@ -79,7 +83,8 @@ async function fetchWithRateLimitRetry(
       return response;
     }
 
-    const delay = Math.min(retryAfterMilliseconds(response), MAX_RETRY_DELAY_MS);
+    const delay = retryAfterMilliseconds(response);
+    if (delay > MAX_RETRY_DELAY_MS) return response;
     await retryDelay(delay);
   }
 }

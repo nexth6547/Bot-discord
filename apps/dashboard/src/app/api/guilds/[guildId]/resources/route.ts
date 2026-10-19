@@ -4,7 +4,7 @@ import {
   logDiscordException,
   logDiscordHttpFailure,
 } from "@/lib/guild-access";
-import { requestDiscord } from "@/lib/discord-api";
+import { discordGuildBotMemberUrl, requestDiscord } from "@/lib/discord-api";
 
 interface DiscordChannel {
   id: string;
@@ -48,7 +48,7 @@ export async function GET(
         headers,
         cache: "no-store",
       }, { cacheTtlMs: 15_000 }),
-      requestDiscord(`https://discord.com/api/v10/guilds/${params.guildId}/members/@me`, {
+      requestDiscord(discordGuildBotMemberUrl(params.guildId), {
         headers,
         cache: "no-store",
       }, { cacheTtlMs: 15_000 }),
