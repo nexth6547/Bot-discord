@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@bot/database";
 import { assertDashboardEnvironment, authOptions } from "@/lib/auth";
+import {
+  classifyDiscordStatus,
+  DiscordNetworkError,
+  requestDiscord,
+} from "@/lib/discord-api";
 
 const ADMINISTRATOR = 1n << 3n;
 const MANAGE_GUILD = 1n << 5n;
@@ -20,7 +25,10 @@ export async function logDiscordHttpFailure(
   response: Response,
   additionalSecrets: string[] = []
 ): Promise<void> {
-  const details: Record<string, string | number> = { status: response.status };
+  const details: Record<string, string | number> = {
+    category: classifyDiscordStatus(response.status),
+    status: response.status,
+  };
 
   try {
     const body: unknown = await response.clone().json();
@@ -57,6 +65,7 @@ export function logDiscordException(
   const name = error instanceof Error ? error.name : typeof error;
   const message = error instanceof Error ? error.message : String(error);
   console.error(`[${operation}] Discord request exception`, {
+    category: error instanceof DiscordNetworkError ? "network" : "exception",
     name: redactDiagnosticText(name, additionalSecrets),
     message: redactDiagnosticText(message, additionalSecrets),
   });
@@ -187,7 +196,7 @@ export async function authorizeGuild(guildId: string): Promise<GuildAccess> {
   }
 
   try {
-    const userGuildsResponse = await fetch(
+    const userGuildsResponse = await requestDiscord(
       "https://discord.com/api/v10/users/@me/guilds",
       {
         headers: { Authorization: `Bearer ${session.accessToken}` },
@@ -242,12 +251,13 @@ export async function authorizeGuild(guildId: string): Promise<GuildAccess> {
       };
     }
 
-    const botGuildResponse = await fetch(
+    const botGuildResponse = await requestDiscord(
       `https://discord.com/api/v10/guilds/${guildId}`,
       {
         headers: { Authorization: `Bot ${botToken}` },
         cache: "no-store",
-      }
+      },
+      { cacheTtlMs: 15_000 }
     );
 
     if (!botGuildResponse.ok) {
@@ -291,10 +301,12 @@ export function invalidConfig(): NextResponse {
 export function internalError(error: unknown, operation: string): NextResponse {
   const name = error instanceof Error ? error.name : typeof error;
   const message = error instanceof Error ? error.message : String(error);
-  console.error(`${operation} failed:`, {
+  const details: Record<string, string> = {
+    ...(error instanceof DiscordNetworkError ? { category: "network" } : {}),
     name: redactDiagnosticText(name),
     message: redactDiagnosticText(message),
-  });
+  };
+  console.error(`${operation} failed:`, details);
   return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
 }
 
@@ -409,22 +421,22 @@ export async function validateGuildReferences(
     const uniqueRoleIds = [...new Set(roleReferences.map(([, id]) => id as string))];
     const [channelsResponse, rolesResponse, memberResponse] = await Promise.all([
       uniqueChannelIds.length
-        ? fetch(`https://discord.com/api/v10/guilds/${guildId}/channels`, {
+        ? requestDiscord(`https://discord.com/api/v10/guilds/${guildId}/channels`, {
             headers: { Authorization: `Bot ${botToken}` },
             cache: "no-store",
-          })
+          }, { cacheTtlMs: 15_000 })
         : Promise.resolve(null),
       uniqueChannelIds.length || uniqueRoleIds.length
-        ? fetch(`https://discord.com/api/v10/guilds/${guildId}/roles`, {
+        ? requestDiscord(`https://discord.com/api/v10/guilds/${guildId}/roles`, {
             headers: { Authorization: `Bot ${botToken}` },
             cache: "no-store",
-          })
+          }, { cacheTtlMs: 15_000 })
         : Promise.resolve(null),
       uniqueChannelIds.length || uniqueRoleIds.length
-        ? fetch(`https://discord.com/api/v10/guilds/${guildId}/members/@me`, {
+        ? requestDiscord(`https://discord.com/api/v10/guilds/${guildId}/members/@me`, {
             headers: { Authorization: `Bot ${botToken}` },
             cache: "no-store",
-          })
+          }, { cacheTtlMs: 15_000 })
         : Promise.resolve(null),
     ]);
 

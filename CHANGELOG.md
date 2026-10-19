@@ -7,6 +7,34 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.33] - 2026-10-19 - Fiabilisation des fixtures SQLite temporaires
+
+### Corrigé [Résolu]
+- **Tests bot et dashboard** : déconnexion systématique de chaque PrismaClient avant le nettoyage, y compris après une erreur, puis suppression asynchrone avec retries pour laisser les handles Windows se libérer.
+- **Fixtures Discord dashboard** : vidage du cache mémoire lorsque les réponses `fetch` mockées changent, afin que les scénarios d'autorisation ne réutilisent pas une réponse antérieure.
+
+### Notes Techniques
+- Aucune assertion modifiée, aucune dépendance ajoutée et aucune base locale utilisée.
+- `pnpm test` réussi : 193/193 tests (bot 24/24, dashboard 169/169) ; `pnpm lint` et `pnpm build` réussis le 19 octobre 2026.
+
+---
+
+## [1.0.32] - 2026-10-19 - Centralisation des appels Discord du dashboard
+
+### Ajouté [Effectué]
+- **Dashboard API** : module commun pour les appels Discord, avec deux nouvelles tentatives au maximum sur 429, respect borné de `Retry-After`, classification des erreurs HTTP/réseau, déduplication des appels simultanés et cache mémoire de 15 secondes pour les données de guilde.
+- **Tests dashboard** : 8 tests avec `fetch` mocké couvrant retries, statuts, réseau, catégorisation des erreurs réseau, déduplication, expiration du cache et séparation des identités d'autorisation ; réussite ciblée le 19 octobre 2026.
+
+### Modifié [Effectué]
+- Les routes guildes, resources, overview, server et l'accès aux guildes utilisent désormais le module partagé ; la liste OAuth propre à l'utilisateur n'est pas mise en cache. Les diagnostics existants sont conservés.
+- Les fixtures de base temporaire lancent Prisma via Node et son entrée JavaScript afin de ne pas dépendre du shim `.bin` spécifique à Windows.
+
+### Notes Techniques
+- Aucun paquet ajouté, aucun appel Discord réel et aucun serveur lancé.
+- `pnpm lint`, `pnpm build` et `pnpm test` réussis le 19 octobre 2026 ; `pnpm test` valide 193 tests après correction de la déconnexion/nettoyage des DB temporaires. La validation de la cause réelle des 502 reste ouverte.
+
+---
+
 ## [1.0.31] - 2026-10-16 - Diagnostic des échecs Discord du dashboard
 
 ### Ajouté [Effectué]

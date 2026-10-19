@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import prisma from "@bot/database";
 import { assertDashboardEnvironment, authOptions } from "@/lib/auth";
 import { logDiscordException, logDiscordHttpFailure } from "@/lib/guild-access";
+import { requestDiscord } from "@/lib/discord-api";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export async function GET() {
   }
 
   try {
-    const discordResponse = await fetch(
+    const discordResponse = await requestDiscord(
       "https://discord.com/api/users/@me/guilds?with_counts=true",
       {
         headers: { Authorization: `Bearer ${session.accessToken}` },

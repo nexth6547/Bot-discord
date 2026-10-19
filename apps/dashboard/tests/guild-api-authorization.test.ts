@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { mock, test } from "node:test";
 import { PrismaClient } from "@bot/database";
+import { clearDiscordApiCache } from "../src/lib/discord-api";
 
 const GUILD_ID = "100000000000000001";
 const OTHER_GUILD_ID = "100000000000000002";
@@ -149,37 +151,47 @@ function setDiscordMocks(): void {
 
 async function withTemporaryDatabase<T>(run: (client: PrismaClient) => Promise<T>): Promise<T> {
   const directory = mkdtempSync(join(tmpdir(), "bloomera-guild-api-test-"));
-  const schemaPath = join(directory, "schema.prisma");
-  const schemaSource = readFileSync(
-    resolve(dirname(fileURLToPath(import.meta.url)), "../../../packages/database/prisma/schema.prisma"),
-    "utf8"
-  );
-  const schema = schemaSource.replace(
-    /url\s*=\s*env\("DATABASE_URL"\)/,
-    'url = "file:./test.db"'
-  );
-  assert.notEqual(schema, schemaSource, "Temporary Prisma schema must use the isolated SQLite file");
-  writeFileSync(schemaPath, schema);
+  let client: PrismaClient | undefined;
 
   try {
+    const schemaPath = join(directory, "schema.prisma");
+    const schemaSource = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), "../../../packages/database/prisma/schema.prisma"),
+      "utf8"
+    );
+    const schema = schemaSource.replace(
+      /url\s*=\s*env\("DATABASE_URL"\)/,
+      'url = "file:./test.db"'
+    );
+    assert.notEqual(schema, schemaSource, "Temporary Prisma schema must use the isolated SQLite file");
+    writeFileSync(schemaPath, schema);
+
     execFileSync(
-      resolve(dirname(fileURLToPath(import.meta.url)), "../../../packages/database/node_modules/.bin/prisma"),
-      ["db", "push", "--schema", schemaPath, "--skip-generate"],
+      process.execPath,
+      [
+        resolve(dirname(fileURLToPath(import.meta.url)), "../../../packages/database/node_modules/prisma/build/index.js"),
+        "db",
+        "push",
+        "--schema",
+        schemaPath,
+        "--skip-generate",
+      ],
       { cwd: directory, stdio: "pipe" }
     );
 
-    const client = new PrismaClient({
+    client = new PrismaClient({
       datasources: { db: { url: `file:${join(directory, "test.db")}` } },
     });
     activePrisma = client;
-    try {
-      return await run(client);
-    } finally {
-      activePrisma = undefined;
-      await client.$disconnect();
-    }
+    clearDiscordApiCache();
+    return await run(client);
   } finally {
-    rmSync(directory, { recursive: true, force: true });
+    activePrisma = undefined;
+    try {
+      if (client) await client.$disconnect();
+    } finally {
+      await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 });
+    }
   }
 }
 
@@ -291,6 +303,7 @@ test("Discord failures log diagnostics without logging bot or OAuth tokens", asy
   }
 
   function setResourceFetch(failure: "429" | "403" | "500" | "network") {
+    clearDiscordApiCache();
     globalThis.fetch = async (input) => {
       const pathname = new URL(String(input)).pathname;
       if (pathname === "/api/v10/users/@me/guilds") {
@@ -513,9 +526,11 @@ test("every /api/guilds/[guildId] route method enforces the authorization matrix
 
           userPermissions = String(ADMINISTRATOR);
           botIsInGuild = false;
+          clearDiscordApiCache();
           const withoutBot = await invoke(module, method, route.path);
           assert.equal(withoutBot.status, 403, "a guild without the bot must be refused");
           botIsInGuild = true;
+          clearDiscordApiCache();
 
           if (method === "DELETE" && route.path === "/reaction-roles") {
             await seedReactionRole(client, "owned-reaction-role", GUILD_ID, "Owned role");

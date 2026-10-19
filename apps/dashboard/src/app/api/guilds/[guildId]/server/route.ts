@@ -5,6 +5,7 @@ import {
   internalError,
   logDiscordHttpFailure,
 } from "@/lib/guild-access";
+import { requestDiscord } from "@/lib/discord-api";
 
 interface DiscordChannel {
   id: string;
@@ -39,14 +40,14 @@ export async function GET(
     await ensureGuildConfig(access.guild);
 
     const [channelsResponse, rolesResponse] = await Promise.all([
-      fetch(`https://discord.com/api/v10/guilds/${params.guildId}/channels`, {
+      requestDiscord(`https://discord.com/api/v10/guilds/${params.guildId}/channels`, {
         headers: { Authorization: `Bot ${botToken}` },
         cache: "no-store",
-      }),
-      fetch(`https://discord.com/api/v10/guilds/${params.guildId}/roles`, {
+      }, { cacheTtlMs: 15_000 }),
+      requestDiscord(`https://discord.com/api/v10/guilds/${params.guildId}/roles`, {
         headers: { Authorization: `Bot ${botToken}` },
         cache: "no-store",
-      }),
+      }, { cacheTtlMs: 15_000 }),
     ]);
 
     if (!channelsResponse.ok || !rolesResponse.ok) {
