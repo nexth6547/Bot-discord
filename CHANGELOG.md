@@ -7,6 +7,21 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.35] - 2026-10-19 - Correction de la recherche du membre bot
+
+### Corrigé [Résolu]
+- **Dashboard Discord** : les recherches du membre bot ciblent son ID issu de `DISCORD_CLIENT_ID`, au lieu de l'alias `@me` refusé par l'API Discord.
+- **Diagnostic HTTP** : les erreurs Discord 400 journalisent les chemins de champs et codes d'erreur sans valeurs de champs ni jetons.
+- **Rate limits** : une réponse 429 dont `Retry-After` dépasse 2 secondes est renvoyée sans nouvelle tentative.
+
+### Ajouté [Effectué]
+- **Tests dashboard** : couverture des URLs membre utilisant l'ID du bot, de la réponse 429 au-delà du délai maximal et des diagnostics de validation 400.
+
+### Notes Techniques
+- Aucun nouveau paquet ni appel Discord réel ; les routes sont exercées avec `fetch` mocké. `pnpm test` réussi (199/199), ainsi que `pnpm lint` et `pnpm build`, le 19 octobre 2026.
+
+---
+
 ## [1.0.34] - 2026-10-19 - Résilience des appels Discord dashboard
 
 ### Ajouté [Effectué]

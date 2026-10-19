@@ -4,6 +4,7 @@ import prisma from "@bot/database";
 import { assertDashboardEnvironment, authOptions } from "@/lib/auth";
 import {
   classifyDiscordStatus,
+  discordGuildBotMemberUrl,
   DiscordNetworkError,
   requestDiscord,
 } from "@/lib/discord-api";
@@ -14,7 +15,7 @@ const SNOWFLAKE_PATTERN = /^\d{17,20}$/;
 
 function redactDiagnosticText(value: string, additionalSecrets: string[] = []): string {
   const secrets = [...Object.values(process.env), ...additionalSecrets]
-    .filter((secret): secret is string => typeof secret === "string" && secret.length > 0)
+    .filter((secret): secret is string => typeof secret === "string" && secret.length >= 4)
     .sort((left, right) => right.length - left.length);
 
   return secrets.reduce((text, secret) => text.split(secret).join("[REDACTED]"), value);
@@ -25,7 +26,7 @@ export async function logDiscordHttpFailure(
   response: Response,
   additionalSecrets: string[] = []
 ): Promise<void> {
-  const details: Record<string, string | number> = {
+  const details: Record<string, unknown> = {
     category: classifyDiscordStatus(response.status),
     status: response.status,
   };
@@ -33,7 +34,7 @@ export async function logDiscordHttpFailure(
   try {
     const body: unknown = await response.clone().json();
     if (body && typeof body === "object") {
-      const errorBody = body as { code?: unknown; message?: unknown };
+      const errorBody = body as { code?: unknown; message?: unknown; errors?: unknown };
       if (typeof errorBody.code === "number") {
         details.code = errorBody.code;
       } else if (typeof errorBody.code === "string") {
@@ -41,6 +42,11 @@ export async function logDiscordHttpFailure(
       }
       if (typeof errorBody.message === "string") {
         details.message = redactDiagnosticText(errorBody.message, additionalSecrets);
+      }
+      if (response.status === 400 && errorBody.errors && typeof errorBody.errors === "object") {
+        const fieldErrors: Array<{ field: string; codes: Array<string | number> }> = [];
+        collectDiscordFieldErrors(errorBody.errors, "", fieldErrors, additionalSecrets);
+        if (fieldErrors.length > 0) details.fieldErrors = fieldErrors;
       }
     }
   } catch {
@@ -55,6 +61,46 @@ export async function logDiscordHttpFailure(
   }
 
   console.error(`[${operation}] Discord HTTP request failed`, details);
+}
+
+function collectDiscordFieldErrors(
+  value: unknown,
+  path: string,
+  fieldErrors: Array<{ field: string; codes: Array<string | number> }>,
+  additionalSecrets: string[]
+): void {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) =>
+      collectDiscordFieldErrors(item, `${path}[${index}]`, fieldErrors, additionalSecrets)
+    );
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+
+  for (const [key, nested] of Object.entries(value)) {
+    if (key === "_errors" && Array.isArray(nested)) {
+      const codes = nested.flatMap((entry): Array<string | number> => {
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
+        const code = (entry as Record<string, unknown>).code;
+        return typeof code === "string" || typeof code === "number"
+          ? [typeof code === "string" ? redactDiagnosticText(code, additionalSecrets) : code]
+          : [];
+      });
+      if (path && codes.length > 0) {
+        fieldErrors.push({
+          field: redactDiagnosticText(path, additionalSecrets),
+          codes,
+        });
+      }
+    } else {
+      collectDiscordFieldErrors(
+        nested,
+        path ? `${path}.${key}` : key,
+        fieldErrors,
+        additionalSecrets
+      );
+    }
+  }
 }
 
 export function logDiscordException(
@@ -436,7 +482,7 @@ export async function validateGuildReferences(
           }, { cacheTtlMs: 15_000 })
         : Promise.resolve(null),
       uniqueChannelIds.length || uniqueRoleIds.length
-        ? requestDiscord(`https://discord.com/api/v10/guilds/${guildId}/members/@me`, {
+        ? requestDiscord(discordGuildBotMemberUrl(guildId), {
             headers: { Authorization: `Bot ${botToken}` },
             cache: "no-store",
           }, { cacheTtlMs: 15_000 })

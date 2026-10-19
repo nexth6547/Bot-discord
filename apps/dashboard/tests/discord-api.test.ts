@@ -3,10 +3,11 @@ import { mock, test } from "node:test";
 import {
   classifyDiscordStatus,
   clearDiscordApiCache,
+  discordGuildBotMemberUrl,
   DiscordNetworkError,
   requestDiscord,
 } from "../src/lib/discord-api";
-import { internalError } from "../src/lib/guild-access";
+import { internalError, logDiscordHttpFailure } from "../src/lib/guild-access";
 
 const URL = "https://discord.com/api/v10/guilds/100000000000000001/channels";
 const INIT: RequestInit = {
@@ -63,7 +64,7 @@ test("repeated 429 responses stop after two bounded retries", async (t) => {
   const waits: number[] = [];
   globalThis.fetch = async () => {
     calls += 1;
-    return jsonResponse({}, 429, { "Retry-After": "60" });
+    return jsonResponse({}, 429, { "Retry-After": "2" });
   };
 
   const response = await requestDiscord(URL, INIT, {
@@ -75,6 +76,79 @@ test("repeated 429 responses stop after two bounded retries", async (t) => {
   assert.equal(calls, 3);
   assert.deepEqual(waits, [2_000, 2_000]);
   assert.equal(classifyDiscordStatus(response.status), "rate_limited");
+});
+
+test("a Retry-After longer than the retry limit returns 429 without retrying", async (t) => {
+  clearDiscordApiCache();
+  const previousFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = previousFetch;
+    clearDiscordApiCache();
+  });
+
+  let calls = 0;
+  const waits: number[] = [];
+  globalThis.fetch = async () => {
+    calls += 1;
+    return jsonResponse({}, 429, { "Retry-After": "10" });
+  };
+
+  const response = await requestDiscord(URL, INIT, {
+    retryDelay: async (milliseconds) => {
+      waits.push(milliseconds);
+    },
+  });
+  assert.equal(response.status, 429);
+  assert.equal(calls, 1);
+  assert.deepEqual(waits, []);
+});
+
+test("guild bot member URL uses the configured bot ID", () => {
+  const previousClientId = process.env.DISCORD_CLIENT_ID;
+  process.env.DISCORD_CLIENT_ID = "900000000000000001";
+  try {
+    const url = discordGuildBotMemberUrl("100000000000000001");
+    assert.equal(
+      url,
+      "https://discord.com/api/v10/guilds/100000000000000001/members/900000000000000001"
+    );
+    assert.ok(!url.includes("@me"));
+  } finally {
+    if (previousClientId === undefined) delete process.env.DISCORD_CLIENT_ID;
+    else process.env.DISCORD_CLIENT_ID = previousClientId;
+  }
+});
+
+test("400 Discord validation diagnostics include field names and codes without secrets", async () => {
+  const logs: string[] = [];
+  const secret = "test-only-auth-secret";
+  const errorMock = mock.method(console, "error", (...args: unknown[]) => {
+    logs.push(args.map((argument) =>
+      typeof argument === "string" ? argument : JSON.stringify(argument)
+    ).join(" "));
+  });
+
+  try {
+    await logDiscordHttpFailure(
+      "test operation",
+      jsonResponse({
+        code: 50035,
+        message: "Invalid Form Body",
+        errors: {
+          user_id: {
+            _errors: [{ code: "BASE_TYPE_REQUIRED", message: secret }],
+          },
+        },
+      }, 400),
+      [secret]
+    );
+    const output = logs.join("\n");
+    assert.match(output, /user_id/);
+    assert.match(output, /BASE_TYPE_REQUIRED/);
+    assert.ok(!output.includes(secret));
+  } finally {
+    errorMock.mock.restore();
+  }
 });
 
 test("403, 404 and 5xx responses remain distinguishable and unchanged", async (t) => {

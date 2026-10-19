@@ -109,7 +109,7 @@ function mockDiscord(): void {
         },
       ]);
     }
-    if (url.pathname === `/api/v10/guilds/${GUILD_ID}/members/@me`) {
+    if (url.pathname === `/api/v10/guilds/${GUILD_ID}/members/900000000000000001`) {
       return jsonResponse({ user: { id: "600000000000000001" }, roles: [BOT_ROLE_ID] });
     }
     if (url.pathname === `/api/v10/channels/${CHANNEL_ID}/messages` && method === "POST") {
