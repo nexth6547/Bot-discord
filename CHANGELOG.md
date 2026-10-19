@@ -7,6 +7,19 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.36] - 2026-10-19 - Validation des identifiants de membre bot
+
+### Corrigé [Résolu]
+- **Dashboard Discord** : `discordGuildBotMemberUrl` refuse les IDs de guilde invalides ainsi que `DISCORD_CLIENT_ID` absent ou invalide, avec une erreur explicite qui n'expose aucune valeur.
+
+### Ajouté [Effectué]
+- **Tests dashboard** : couverture des variables absente, vide et non numérique, du paramètre de guilde invalide et de la génération d'URL valide.
+
+### Notes Techniques
+- Aucun paquet ajouté ni appel réseau réel. `pnpm test` réussi (200/200 : bot 24/24, dashboard 176/176), ainsi que `pnpm lint` et `pnpm build`, le 19 octobre 2026.
+
+---
+
 ## [1.0.35] - 2026-10-19 - Correction de la recherche du membre bot
 
 ### Corrigé [Résolu]

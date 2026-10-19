@@ -119,6 +119,40 @@ test("guild bot member URL uses the configured bot ID", () => {
   }
 });
 
+test("guild bot member URL rejects invalid IDs without including their values", () => {
+  const previousClientId = process.env.DISCORD_CLIENT_ID;
+  try {
+    for (const invalidClientId of [undefined, "", "not-numeric"]) {
+      if (invalidClientId === undefined) delete process.env.DISCORD_CLIENT_ID;
+      else process.env.DISCORD_CLIENT_ID = invalidClientId;
+
+      assert.throws(
+        () => discordGuildBotMemberUrl("100000000000000001"),
+        (error: unknown) => {
+          assert.ok(error instanceof Error);
+          assert.match(error.message, /DISCORD_CLIENT_ID/);
+          if (invalidClientId) assert.ok(!error.message.includes(invalidClientId));
+          return true;
+        }
+      );
+    }
+
+    process.env.DISCORD_CLIENT_ID = "900000000000000001";
+    assert.throws(
+      () => discordGuildBotMemberUrl("not-numeric"),
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        assert.match(error.message, /guildId/);
+        assert.ok(!error.message.includes("not-numeric"));
+        return true;
+      }
+    );
+  } finally {
+    if (previousClientId === undefined) delete process.env.DISCORD_CLIENT_ID;
+    else process.env.DISCORD_CLIENT_ID = previousClientId;
+  }
+});
+
 test("400 Discord validation diagnostics include field names and codes without secrets", async () => {
   const logs: string[] = [];
   const secret = "test-only-auth-secret";

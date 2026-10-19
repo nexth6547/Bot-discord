@@ -4,6 +4,7 @@ const MAX_RATE_LIMIT_RETRIES = 2;
 const MAX_RETRY_DELAY_MS = 2_000;
 const MAX_CACHE_ENTRIES = 512;
 const MAX_CACHE_TTL_MS = 15_000;
+const SNOWFLAKE_PATTERN = /^\d{17,20}$/;
 
 interface CachedResponse {
   expiresAt: number;
@@ -47,7 +48,16 @@ function retryAfterMilliseconds(response: Response): number {
 }
 
 export function discordGuildBotMemberUrl(guildId: string): string {
-  return `https://discord.com/api/v10/guilds/${guildId}/members/${process.env.DISCORD_CLIENT_ID}`;
+  if (!SNOWFLAKE_PATTERN.test(guildId)) {
+    throw new Error("Invalid guildId: expected a 17-20 digit Discord snowflake.");
+  }
+
+  const botUserId = process.env.DISCORD_CLIENT_ID;
+  if (!botUserId || !SNOWFLAKE_PATTERN.test(botUserId)) {
+    throw new Error("Invalid DISCORD_CLIENT_ID: expected a 17-20 digit Discord snowflake.");
+  }
+
+  return `https://discord.com/api/v10/guilds/${guildId}/members/${botUserId}`;
 }
 
 function requestKey(url: string, init: RequestInit): string {
