@@ -1,118 +1,155 @@
-const DISCORD_API_BASE = "https://discord.com/api/v10";
-const MAX_RATE_LIMIT_RETRIES = 2;
-const MAX_RETRY_AFTER_MS = 2_000;
-const DEFAULT_GUILD_CACHE_TTL_MS = 15_000;
+import { createHash } from "node:crypto";
 
-interface DiscordFetchOptions {
-  cacheGuildResponse?: boolean;
-}
+const MAX_RATE_LIMIT_RETRIES = 2;
+const MAX_RETRY_DELAY_MS = 2_000;
+const MAX_CACHE_ENTRIES = 512;
+const MAX_CACHE_TTL_MS = 15_000;
 
 interface CachedResponse {
   expiresAt: number;
   response: Response;
 }
 
-interface DiscordApiState {
-  cache: Map<string, CachedResponse>;
-  inFlight: Map<string, Promise<Response>>;
+export interface DiscordRequestOptions {
+  cacheTtlMs?: number;
+  retryDelay?: (milliseconds: number) => Promise<void>;
 }
 
-const stateKey = "__bloomeraDiscordApiState";
-const globalState = globalThis as typeof globalThis & {
-  [stateKey]?: DiscordApiState;
-};
-const state =
-  globalState[stateKey] ??
-  (globalState[stateKey] = {
-    cache: new Map(),
-    inFlight: new Map(),
-  });
-
-function cacheKey(url: string, init: RequestInit): string {
-  const headers = [...new Headers(init.headers).entries()].sort(([left], [right]) =>
-    left.localeCompare(right)
-  );
-  return JSON.stringify([url, (init.method ?? "GET").toUpperCase(), headers]);
+export class DiscordNetworkError extends Error {
+  constructor(cause: unknown) {
+    const message = cause instanceof Error ? cause.message : String(cause);
+    super(message, { cause });
+    this.name = "DiscordNetworkError";
+  }
 }
 
-function retryAfterDelay(response: Response): number {
+const responseCache = new Map<string, CachedResponse>();
+const inFlightRequests = new Map<string, Promise<Response>>();
+
+export function classifyDiscordStatus(status: number): string {
+  if (status === 403) return "forbidden";
+  if (status === 404) return "not_found";
+  if (status === 429) return "rate_limited";
+  if (status >= 500) return "server_error";
+  if (status === 401) return "unauthorized";
+  return "http_error";
+}
+
+function retryAfterMilliseconds(response: Response): number {
   const retryAfter = response.headers.get("Retry-After");
   if (!retryAfter) return 0;
 
   const seconds = Number(retryAfter);
-  const delay = Number.isFinite(seconds)
-    ? seconds * 1_000
-    : Date.parse(retryAfter) - Date.now();
-  return Math.max(0, Math.min(delay, MAX_RETRY_AFTER_MS));
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1_000);
+
+  const date = Date.parse(retryAfter);
+  return Number.isNaN(date) ? 0 : Math.max(0, date - Date.now());
 }
 
-function wait(milliseconds: number): Promise<void> {
-  if (milliseconds === 0) return Promise.resolve();
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+function requestKey(url: string, init: RequestInit): string {
+  const headers = new Headers(init.headers);
+  const authorization = headers.get("Authorization") ?? "";
+  headers.delete("Authorization");
+  const normalizedHeaders = [...headers.entries()].sort(([left], [right]) =>
+    left.localeCompare(right)
+  );
+  const identity = JSON.stringify({
+    method: (init.method ?? "GET").toUpperCase(),
+    url,
+    authorization,
+    headers: normalizedHeaders,
+  });
+  return createHash("sha256").update(identity).digest("hex");
 }
 
-async function fetchWithRateLimitRetry(url: string, init: RequestInit): Promise<Response> {
-  for (let retry = 0; ; retry++) {
-    const response = await fetch(url, init);
-    if (response.status !== 429 || retry >= MAX_RATE_LIMIT_RETRIES) return response;
-
-    await wait(retryAfterDelay(response));
-  }
-}
-
-function isCacheableResponse(response: Response): boolean {
-  return response.ok;
-}
-
-export async function discordApiFetch(
-  pathOrUrl: string,
-  init: RequestInit = {},
-  options: DiscordFetchOptions = {}
+async function fetchWithRateLimitRetry(
+  url: string,
+  init: RequestInit,
+  retryDelay: (milliseconds: number) => Promise<void>
 ): Promise<Response> {
-  const url = pathOrUrl.startsWith("https://")
-    ? pathOrUrl
-    : `${DISCORD_API_BASE}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
-  const requestInit = { ...init, method: (init.method ?? "GET").toUpperCase() };
-  const key = cacheKey(url, requestInit);
-  const isGet = requestInit.method === "GET";
-  const cacheGuildResponse =
-    isGet &&
-    options.cacheGuildResponse === true &&
-    !/\/users\/@me\/guilds(?:\?|$)/.test(url);
-  if (!isGet) return fetchWithRateLimitRetry(url, requestInit);
+  for (let retry = 0; ; retry += 1) {
+    let response: Response;
+    try {
+      response = await fetch(url, init);
+    } catch (error) {
+      throw new DiscordNetworkError(error);
+    }
 
+    if (response.status !== 429 || retry >= MAX_RATE_LIMIT_RETRIES) {
+      return response;
+    }
+
+    const delay = Math.min(retryAfterMilliseconds(response), MAX_RETRY_DELAY_MS);
+    await retryDelay(delay);
+  }
+}
+
+export async function requestDiscord(
+  url: string,
+  init: RequestInit = {},
+  options: DiscordRequestOptions = {}
+): Promise<Response> {
+  const method = (init.method ?? "GET").toUpperCase();
+  const isGet = method === "GET";
+  const userGuildList = /\/users\/@me\/guilds(?:\?|$)/.test(url);
+  const ttl = Math.min(
+    Math.max(0, options.cacheTtlMs ?? 0),
+    MAX_CACHE_TTL_MS
+  );
+  const shouldCache = isGet && ttl > 0 && !userGuildList;
+  if (!isGet) {
+    return fetchWithRateLimitRetry(
+      url,
+      init,
+      options.retryDelay ?? ((milliseconds) =>
+        new Promise((resolve) => setTimeout(resolve, milliseconds)))
+    );
+  }
+
+  const key = requestKey(url, init);
   const now = Date.now();
-  for (const [entryKey, entry] of state.cache) {
-    if (entry.expiresAt <= now) state.cache.delete(entryKey);
+  for (const [cacheKey, cached] of responseCache) {
+    if (cached.expiresAt <= now) responseCache.delete(cacheKey);
   }
-  const cached = cacheGuildResponse ? state.cache.get(key) : undefined;
 
-  if (cached && cached.expiresAt > now) return cached.response.clone();
-  if (cached) state.cache.delete(key);
+  if (shouldCache) {
+    const cached = responseCache.get(key);
+    if (cached) return cached.response.clone();
+  }
 
-  let pending: Promise<Response> | undefined = state.inFlight.get(key);
-  if (!pending) {
-    let trackedRequest: Promise<Response>;
-    trackedRequest = fetchWithRateLimitRetry(url, requestInit)
-      .then((response) => {
-        if (cacheGuildResponse && isCacheableResponse(response)) {
-          state.cache.set(key, {
-            expiresAt: Date.now() + DEFAULT_GUILD_CACHE_TTL_MS,
-            response: response.clone(),
-          });
-        }
-        return response;
-      })
-      .finally(() => {
-        if (state.inFlight.get(key) === trackedRequest) state.inFlight.delete(key);
+  let request = inFlightRequests.get(key);
+  if (!request) {
+    request = fetchWithRateLimitRetry(
+      url,
+      init,
+      options.retryDelay ?? ((milliseconds) =>
+        new Promise((resolve) => setTimeout(resolve, milliseconds)))
+    );
+    inFlightRequests.set(key, request);
+  }
+
+  try {
+    const response = await request;
+    if (shouldCache && response.ok) {
+      while (responseCache.size >= MAX_CACHE_ENTRIES) {
+        const oldestKey = responseCache.keys().next().value;
+        if (oldestKey === undefined) break;
+        responseCache.delete(oldestKey);
+      }
+      responseCache.set(key, {
+        expiresAt: Date.now() + ttl,
+        response: response.clone(),
       });
-    pending = trackedRequest;
-    state.inFlight.set(key, trackedRequest);
+    }
+    return response.clone();
+  } finally {
+    if (inFlightRequests.get(key) === request) {
+      inFlightRequests.delete(key);
+    }
   }
-
-  return (await pending).clone();
 }
 
 export function clearDiscordApiCache(): void {
-  state.cache.clear();
+  responseCache.clear();
+  inFlightRequests.clear();
 }

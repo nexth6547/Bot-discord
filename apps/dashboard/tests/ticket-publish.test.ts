@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -127,36 +128,46 @@ async function withTemporaryDatabase<T>(
   run: (client: PrismaClient) => Promise<T>
 ): Promise<T> {
   const directory = mkdtempSync(join(tmpdir(), "bloomera-ticket-publish-test-"));
-  const schemaPath = join(directory, "schema.prisma");
-  const schemaSource = readFileSync(
-    resolve(dirname(fileURLToPath(import.meta.url)), "../../../packages/database/prisma/schema.prisma"),
-    "utf8"
-  );
-  const schema = schemaSource.replace(
-    /url\s*=\s*env\("DATABASE_URL"\)/,
-    'url = "file:./test.db"'
-  );
-  assert.notEqual(schema, schemaSource, "Temporary Prisma schema must use an isolated SQLite file");
-  writeFileSync(schemaPath, schema);
+  let client: PrismaClient | undefined;
 
   try {
+    const schemaPath = join(directory, "schema.prisma");
+    const schemaSource = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), "../../../packages/database/prisma/schema.prisma"),
+      "utf8"
+    );
+    const schema = schemaSource.replace(
+      /url\s*=\s*env\("DATABASE_URL"\)/,
+      'url = "file:./test.db"'
+    );
+    assert.notEqual(schema, schemaSource, "Temporary Prisma schema must use an isolated SQLite file");
+    writeFileSync(schemaPath, schema);
+
     execFileSync(
-      resolve(dirname(fileURLToPath(import.meta.url)), "../../../packages/database/node_modules/.bin/prisma"),
-      ["db", "push", "--schema", schemaPath, "--skip-generate"],
+      process.execPath,
+      [
+        resolve(dirname(fileURLToPath(import.meta.url)), "../../../packages/database/node_modules/prisma/build/index.js"),
+        "db",
+        "push",
+        "--schema",
+        schemaPath,
+        "--skip-generate",
+      ],
       { cwd: directory, stdio: "pipe" }
     );
-    const client = new PrismaClient({
+    client = new PrismaClient({
       datasources: { db: { url: `file:${join(directory, "test.db")}` } },
     });
     activePrisma = client;
-    try {
-      return await run(client);
-    } finally {
-      activePrisma = undefined;
-      await client.$disconnect();
-    }
+    clearDiscordApiCache();
+    return await run(client);
   } finally {
-    rmSync(directory, { recursive: true, force: true });
+    activePrisma = undefined;
+    try {
+      if (client) await client.$disconnect();
+    } finally {
+      await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 });
+    }
   }
 }
 

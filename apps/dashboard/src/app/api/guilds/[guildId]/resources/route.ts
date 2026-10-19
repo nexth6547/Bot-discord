@@ -4,7 +4,7 @@ import {
   logDiscordException,
   logDiscordHttpFailure,
 } from "@/lib/guild-access";
-import { discordApiFetch } from "@/lib/discord-api";
+import { requestDiscord } from "@/lib/discord-api";
 
 interface DiscordChannel {
   id: string;
@@ -40,18 +40,18 @@ export async function GET(
   try {
     const headers = { Authorization: `Bot ${botToken}` };
     const [channelsResponse, rolesResponse, memberResponse] = await Promise.all([
-      discordApiFetch(`https://discord.com/api/v10/guilds/${params.guildId}/channels`, {
+      requestDiscord(`https://discord.com/api/v10/guilds/${params.guildId}/channels`, {
         headers,
         cache: "no-store",
-      }, { cacheGuildResponse: true }),
-      discordApiFetch(`https://discord.com/api/v10/guilds/${params.guildId}/roles`, {
+      }, { cacheTtlMs: 15_000 }),
+      requestDiscord(`https://discord.com/api/v10/guilds/${params.guildId}/roles`, {
         headers,
         cache: "no-store",
-      }, { cacheGuildResponse: true }),
-      discordApiFetch(`https://discord.com/api/v10/guilds/${params.guildId}/members/@me`, {
+      }, { cacheTtlMs: 15_000 }),
+      requestDiscord(`https://discord.com/api/v10/guilds/${params.guildId}/members/@me`, {
         headers,
         cache: "no-store",
-      }),
+      }, { cacheTtlMs: 15_000 }),
     ]);
 
     if (!channelsResponse.ok || !rolesResponse.ok || !memberResponse.ok) {

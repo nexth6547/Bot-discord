@@ -7,11 +7,11 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
-## [1.0.32] - 2026-10-19 - Résilience des appels Discord dashboard
+## [1.0.34] - 2026-10-19 - Résilience des appels Discord dashboard
 
 ### Ajouté [Effectué]
 - **Dashboard** : module central `discord-api.ts` pour les appels de guildes ciblés, avec deux retries maximum sur 429 selon `Retry-After` plafonné à 2 secondes, déduplication des GET simultanés et cache mémoire de 15 secondes pour les réponses guild channels, roles et métadonnées non propres à l'utilisateur.
-- **Tests dashboard** : couverture de retry 429 puis succès, 429 persistant, statuts 403/404/500, exception réseau, déduplication, expiration du cache et séparation des listes utilisateur selon le jeton OAuth.
+- **Tests dashboard** : couverture du retry 429 puis succès, des 429 persistants, des statuts 403/404/500, des exceptions réseau, de la déduplication, de l'expiration du cache et de la séparation des identités d'autorisation.
 
 ### Corrigé [Résolu]
 - **Accès aux guildes** : l'état de présence du bot utilisé comme contrôle d'autorisation n'est pas mis en cache; les échecs API continuent de garder leurs statuts et corps de réponse existants après retries épuisés.
@@ -21,7 +21,35 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 - **Tests dashboard** : les caches sont réinitialisés dans les fixtures d'intégration qui injectent des états Discord différents, afin de préserver l'isolation de leurs scénarios.
 
 ### Notes Techniques
-- Aucun nouveau paquet; utilisateur-listes OAuth non mises en cache et les clés de déduplication incluent les en-têtes d'autorisation. Aucune requête Discord réelle.
+- Aucun nouveau paquet; les listes OAuth des utilisateurs ne sont pas mises en cache et les clés de déduplication incluent l'identité d'autorisation. Aucune requête Discord réelle.
+
+---
+
+## [1.0.33] - 2026-10-19 - Fiabilisation des fixtures SQLite temporaires
+
+### Corrigé [Résolu]
+- **Tests bot et dashboard** : déconnexion systématique de chaque PrismaClient avant le nettoyage, y compris après une erreur, puis suppression asynchrone avec retries pour laisser les handles Windows se libérer.
+- **Fixtures Discord dashboard** : vidage du cache mémoire lorsque les réponses `fetch` mockées changent, afin que les scénarios d'autorisation ne réutilisent pas une réponse antérieure.
+
+### Notes Techniques
+- Aucune assertion modifiée, aucune dépendance ajoutée et aucune base locale utilisée.
+- `pnpm test` réussi : 193/193 tests (bot 24/24, dashboard 169/169) ; `pnpm lint` et `pnpm build` réussis le 19 octobre 2026.
+
+---
+
+## [1.0.32] - 2026-10-19 - Centralisation des appels Discord du dashboard
+
+### Ajouté [Effectué]
+- **Dashboard API** : module commun pour les appels Discord, avec deux nouvelles tentatives au maximum sur 429, respect borné de `Retry-After`, classification des erreurs HTTP/réseau, déduplication des appels simultanés et cache mémoire de 15 secondes pour les données de guilde.
+- **Tests dashboard** : 8 tests avec `fetch` mocké couvrant retries, statuts, réseau, catégorisation des erreurs réseau, déduplication, expiration du cache et séparation des identités d'autorisation ; réussite ciblée le 19 octobre 2026.
+
+### Modifié [Effectué]
+- Les routes guildes, resources, overview, server et l'accès aux guildes utilisent désormais le module partagé ; la liste OAuth propre à l'utilisateur n'est pas mise en cache. Les diagnostics existants sont conservés.
+- Les fixtures de base temporaire lancent Prisma via Node et son entrée JavaScript afin de ne pas dépendre du shim `.bin` spécifique à Windows.
+
+### Notes Techniques
+- Aucun paquet ajouté, aucun appel Discord réel et aucun serveur lancé.
+- `pnpm lint`, `pnpm build` et `pnpm test` réussis le 19 octobre 2026 ; `pnpm test` valide 193 tests après correction de la déconnexion/nettoyage des DB temporaires. La validation de la cause réelle des 502 reste ouverte.
 
 ---
 

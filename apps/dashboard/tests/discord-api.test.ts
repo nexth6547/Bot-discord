@@ -1,198 +1,234 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
-import { clearDiscordApiCache, discordApiFetch } from "../src/lib/discord-api";
+import { mock, test } from "node:test";
+import {
+  classifyDiscordStatus,
+  clearDiscordApiCache,
+  DiscordNetworkError,
+  requestDiscord,
+} from "../src/lib/discord-api";
+import { internalError } from "../src/lib/guild-access";
 
-function makeResponse(status: number, headers?: HeadersInit): Response {
-  return new Response(JSON.stringify({ status }), { status, headers });
+const URL = "https://discord.com/api/v10/guilds/100000000000000001/channels";
+const INIT: RequestInit = {
+  headers: { Authorization: "Bot test-only-token" },
+  cache: "no-store",
+};
+
+function jsonResponse(body: unknown, status = 200, headers?: HeadersInit): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      ...Object.fromEntries(new Headers(headers)),
+    },
+  });
 }
 
-test("Discord API retries a 429 using Retry-After and returns the success response", async () => {
-  const previousFetch = globalThis.fetch;
-  let requests = 0;
-  globalThis.fetch = async () => {
-    requests++;
-    return requests === 1
-      ? makeResponse(429, { "Retry-After": "0" })
-      : makeResponse(200);
-  };
-
-  try {
-    const response = await discordApiFetch(
-      "https://discord.com/api/v10/guilds/test-rate-limit-success"
-    );
-    assert.equal(response.status, 200);
-    assert.equal(requests, 2);
-  } finally {
-    globalThis.fetch = previousFetch;
-  }
-});
-
-test("Discord API stops after two retries when 429 persists", async () => {
-  const previousFetch = globalThis.fetch;
-  let requests = 0;
-  globalThis.fetch = async () => {
-    requests++;
-    return makeResponse(429, { "Retry-After": "0" });
-  };
-
-  try {
-    const response = await discordApiFetch(
-      "https://discord.com/api/v10/guilds/test-repeated-rate-limit"
-    );
-    assert.equal(response.status, 429);
-    assert.equal(requests, 3);
-  } finally {
-    globalThis.fetch = previousFetch;
-  }
-});
-
-test("Discord API preserves 403 and 500 HTTP responses", async () => {
-  const previousFetch = globalThis.fetch;
-  globalThis.fetch = async (input) => {
-    const url = String(input);
-    return makeResponse(url.endsWith("/403") ? 403 : 500);
-  };
-
-  try {
-    const forbidden = await discordApiFetch("https://discord.com/api/v10/test/403");
-    const notFound = await discordApiFetch("https://discord.com/api/v10/test/404");
-    const serverError = await discordApiFetch("https://discord.com/api/v10/test/500");
-    assert.equal(forbidden.status, 403);
-    assert.equal(notFound.status, 404);
-    assert.equal(serverError.status, 500);
-  } finally {
-    globalThis.fetch = previousFetch;
-  }
-});
-
-test("Discord API propagates network exceptions", async () => {
-  const previousFetch = globalThis.fetch;
-  const networkError = new TypeError("Mock network failure");
-  globalThis.fetch = async () => {
-    throw networkError;
-  };
-
-  try {
-    await assert.rejects(
-      discordApiFetch("https://discord.com/api/v10/test/network"),
-      (error: unknown) => error === networkError
-    );
-  } finally {
-    globalThis.fetch = previousFetch;
-  }
-});
-
-test("simultaneous identical Discord API requests are deduplicated", async () => {
-  const previousFetch = globalThis.fetch;
-  let requests = 0;
-  let releaseFetch: ((response: Response) => void) | undefined;
-  globalThis.fetch = async () => {
-    requests++;
-    return new Promise<Response>((resolve) => {
-      releaseFetch = resolve;
-    });
-  };
-
-  try {
-    const url = "https://discord.com/api/v10/test/simultaneous-dedupe";
-    const first = discordApiFetch(url, { headers: { Authorization: "Bot fictional-a" } });
-    const second = discordApiFetch(url, { headers: { Authorization: "Bot fictional-a" } });
-
-    await new Promise((resolve) => setImmediate(resolve));
-    assert.equal(requests, 1);
-    assert.ok(releaseFetch);
-    releaseFetch(makeResponse(200));
-
-    const responses = await Promise.all([first, second]);
-    assert.deepEqual(responses.map((response) => response.status), [200, 200]);
-    assert.notEqual(responses[0], responses[1]);
-  } finally {
-    globalThis.fetch = previousFetch;
-  }
-});
-
-test("user-specific Discord requests are not shared between users", async () => {
-  const previousFetch = globalThis.fetch;
-  let requests = 0;
-  const releaseFetches: Array<() => void> = [];
-  globalThis.fetch = async () => {
-    requests++;
-    await new Promise<void>((resolve) => {
-      releaseFetches.push(resolve);
-    });
-    return makeResponse(200);
-  };
-
-  try {
-    const url = "https://discord.com/api/v10/users/@me/guilds";
-    const first = discordApiFetch(url, { headers: { Authorization: "Bearer fictional-a" } });
-    const second = discordApiFetch(url, { headers: { Authorization: "Bearer fictional-b" } });
-
-    await new Promise((resolve) => setImmediate(resolve));
-    assert.equal(requests, 2);
-    assert.equal(releaseFetches.length, 2);
-    releaseFetches.forEach((releaseFetch) => releaseFetch());
-
-    await Promise.all([first, second]);
-  } finally {
-    globalThis.fetch = previousFetch;
-  }
-});
-
-test("guild responses are cached briefly and fetched again after TTL expiry", async () => {
-  const previousFetch = globalThis.fetch;
-  const originalNow = Date.now;
-  let now = 1_000;
-  let requests = 0;
-  Date.now = () => now;
+test("429 retries according to Retry-After and returns success", async (t) => {
   clearDiscordApiCache();
+  const previousFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = previousFetch;
+    clearDiscordApiCache();
+  });
+
+  let calls = 0;
+  const waits: number[] = [];
   globalThis.fetch = async () => {
-    requests++;
-    return makeResponse(200);
+    calls += 1;
+    return calls === 1
+      ? jsonResponse({ message: "rate limited" }, 429, { "Retry-After": "0.25" })
+      : jsonResponse({ ok: true });
   };
 
-  try {
-    const url = "https://discord.com/api/v10/guilds/test-cache-expiry/channels";
-    const options = { cacheGuildResponse: true };
-    const first = await discordApiFetch(url, {}, options);
-    const cached = await discordApiFetch(url, {}, options);
-    assert.equal(first.status, 200);
-    assert.equal(cached.status, 200);
-    assert.equal(requests, 1);
+  const response = await requestDiscord(URL, INIT, {
+    retryDelay: async (milliseconds) => {
+      waits.push(milliseconds);
+    },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(calls, 2);
+  assert.deepEqual(waits, [250]);
+});
 
-    now += 15_001;
-    await discordApiFetch(url, {}, options);
-    assert.equal(requests, 2);
-  } finally {
-    clearDiscordApiCache();
-    Date.now = originalNow;
+test("repeated 429 responses stop after two bounded retries", async (t) => {
+  clearDiscordApiCache();
+  const previousFetch = globalThis.fetch;
+  t.after(() => {
     globalThis.fetch = previousFetch;
+    clearDiscordApiCache();
+  });
+
+  let calls = 0;
+  const waits: number[] = [];
+  globalThis.fetch = async () => {
+    calls += 1;
+    return jsonResponse({}, 429, { "Retry-After": "60" });
+  };
+
+  const response = await requestDiscord(URL, INIT, {
+    retryDelay: async (milliseconds) => {
+      waits.push(milliseconds);
+    },
+  });
+  assert.equal(response.status, 429);
+  assert.equal(calls, 3);
+  assert.deepEqual(waits, [2_000, 2_000]);
+  assert.equal(classifyDiscordStatus(response.status), "rate_limited");
+});
+
+test("403, 404 and 5xx responses remain distinguishable and unchanged", async (t) => {
+  clearDiscordApiCache();
+  const previousFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = previousFetch;
+    clearDiscordApiCache();
+  });
+
+  for (const [status, category] of [
+    [403, "forbidden"],
+    [404, "not_found"],
+    [500, "server_error"],
+  ] as const) {
+    globalThis.fetch = async () => jsonResponse({ message: category }, status);
+    const response = await requestDiscord(URL, INIT);
+    assert.equal(response.status, status);
+    assert.equal(classifyDiscordStatus(response.status), category);
   }
 });
 
-test("identical user-list requests with different OAuth tokens remain separate", async () => {
+test("network exceptions are identified without being converted to HTTP responses", async (t) => {
+  clearDiscordApiCache();
   const previousFetch = globalThis.fetch;
-  let requests = 0;
+  t.after(() => {
+    globalThis.fetch = previousFetch;
+    clearDiscordApiCache();
+  });
+
   globalThis.fetch = async () => {
-    requests++;
-    return makeResponse(200);
+    throw new Error("test-only network failure");
   };
+  await assert.rejects(
+    requestDiscord(URL, INIT),
+    (error: unknown) =>
+      error instanceof DiscordNetworkError &&
+      error.message === "test-only network failure"
+  );
+});
+
+test("network exceptions are categorized in generic route diagnostics", () => {
+  const logs: string[] = [];
+  const errorMock = mock.method(console, "error", (...args: unknown[]) => {
+    logs.push(args.map((argument) =>
+      typeof argument === "string" ? argument : JSON.stringify(argument)
+    ).join(" "));
+  });
 
   try {
-    const url = "https://discord.com/api/v10/users/@me/guilds";
-    const cacheOption = { cacheGuildResponse: true };
-    await discordApiFetch(
-      url,
-      { headers: { Authorization: "Bearer fictional-user-a" } },
-      cacheOption
+    const response = internalError(
+      new DiscordNetworkError(new Error("offline transport issue")),
+      "test operation"
     );
-    await discordApiFetch(
-      url,
-      { headers: { Authorization: "Bearer fictional-user-b" } },
-      cacheOption
-    );
-    assert.equal(requests, 2);
+    assert.equal(response.status, 500);
+    assert.match(logs.join("\n"), /network/);
+    assert.match(logs.join("\n"), /offline transport issue/);
   } finally {
-    globalThis.fetch = previousFetch;
+    errorMock.mock.restore();
   }
+});
+
+test("identical simultaneous requests share one fetch and independent responses", async (t) => {
+  clearDiscordApiCache();
+  const previousFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = previousFetch;
+    clearDiscordApiCache();
+  });
+
+  let calls = 0;
+  let resolveFetch: ((response: Response) => void) | undefined;
+  globalThis.fetch = () => {
+    calls += 1;
+    return new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+  };
+
+  const firstRequest = requestDiscord(URL, INIT);
+  const secondRequest = requestDiscord(URL, INIT);
+  assert.equal(calls, 1);
+  resolveFetch?.(jsonResponse({ request: "shared" }));
+
+  const [first, second] = await Promise.all([firstRequest, secondRequest]);
+  assert.deepEqual(await first.json(), { request: "shared" });
+  assert.deepEqual(await second.json(), { request: "shared" });
+});
+
+test("guild response cache expires after its TTL", async (t) => {
+  clearDiscordApiCache();
+  const previousFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = previousFetch;
+    clearDiscordApiCache();
+  });
+
+  let calls = 0;
+  globalThis.fetch = async () => jsonResponse({ call: ++calls });
+
+  const options = { cacheTtlMs: 25 };
+  assert.deepEqual(await (await requestDiscord(URL, INIT, options)).json(), { call: 1 });
+  assert.deepEqual(await (await requestDiscord(URL, INIT, options)).json(), { call: 1 });
+  assert.equal(calls, 1);
+
+  await new Promise((resolve) => setTimeout(resolve, 35));
+  assert.deepEqual(await (await requestDiscord(URL, INIT, options)).json(), { call: 2 });
+  assert.equal(calls, 2);
+});
+
+test("cached guild data is not shared across authorization identities", async (t) => {
+  clearDiscordApiCache();
+  const previousFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = previousFetch;
+    clearDiscordApiCache();
+  });
+
+  let calls = 0;
+  globalThis.fetch = async (_input, init) =>
+    jsonResponse({
+      authorization: new Headers(init?.headers).get("Authorization"),
+      call: ++calls,
+    });
+
+  const options = { cacheTtlMs: 1_000 };
+  const first = await requestDiscord(URL, INIT, options);
+  const second = await requestDiscord(
+    URL,
+    { ...INIT, headers: { Authorization: "Bot another-test-only-token" } },
+    options
+  );
+  assert.deepEqual(await first.json(), { authorization: "Bot test-only-token", call: 1 });
+  assert.deepEqual(await second.json(), {
+    authorization: "Bot another-test-only-token",
+    call: 2,
+  });
+  assert.equal(calls, 2);
+});
+
+test("user-specific guild lists are never cached", async (t) => {
+  clearDiscordApiCache();
+  const previousFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = previousFetch;
+    clearDiscordApiCache();
+  });
+
+  let calls = 0;
+  globalThis.fetch = async () => jsonResponse({ call: ++calls });
+
+  const userGuildList = "https://discord.com/api/v10/users/@me/guilds";
+  const options = { cacheTtlMs: 1_000 };
+  await requestDiscord(userGuildList, INIT, options);
+  await requestDiscord(userGuildList, INIT, options);
+  assert.equal(calls, 2);
 });
