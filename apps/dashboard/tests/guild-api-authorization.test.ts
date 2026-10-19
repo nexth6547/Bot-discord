@@ -6,6 +6,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { mock, test } from "node:test";
 import { PrismaClient } from "@bot/database";
+import { clearDiscordApiCache } from "../src/lib/discord-api";
 
 const GUILD_ID = "100000000000000001";
 const OTHER_GUILD_ID = "100000000000000002";
@@ -315,7 +316,7 @@ test("Discord failures log diagnostics without logging bot or OAuth tokens", asy
         if (failure === "429") {
           return new Response(JSON.stringify({ code: 20028, message: "Rate limited" }), {
             status: 429,
-            headers: { "Content-Type": "application/json", "Retry-After": "2.5" },
+            headers: { "Content-Type": "application/json", "Retry-After": "0" },
           });
         }
         if (failure === "500") {
@@ -335,6 +336,7 @@ test("Discord failures log diagnostics without logging bot or OAuth tokens", asy
   activeSession = { accessToken: oauthToken };
 
   await t.test("429 logs status, JSON details and Retry-After", async () => {
+    clearDiscordApiCache();
     setResourceFetch("429");
     const { response, logs } = await captureLogs(() =>
       resourcesRoute.GET(
@@ -346,12 +348,13 @@ test("Discord failures log diagnostics without logging bot or OAuth tokens", asy
     assert.match(logs, /429/);
     assert.match(logs, /20028/);
     assert.match(logs, /Rate limited/);
-    assert.match(logs, /2\.5/);
+    assert.match(logs, /retryAfter.*0/);
     assert.ok(!logs.includes(botToken));
     assert.ok(!logs.includes(oauthToken));
   });
 
   await t.test("403 logs its status without changing the response", async () => {
+    clearDiscordApiCache();
     setResourceFetch("403");
     const { response, logs } = await captureLogs(() =>
       resourcesRoute.GET(
@@ -367,6 +370,7 @@ test("Discord failures log diagnostics without logging bot or OAuth tokens", asy
   });
 
   await t.test("500 logs status and Discord error body", async () => {
+    clearDiscordApiCache();
     setResourceFetch("500");
     const { response, logs } = await captureLogs(() =>
       resourcesRoute.GET(
@@ -383,6 +387,7 @@ test("Discord failures log diagnostics without logging bot or OAuth tokens", asy
   });
 
   await t.test("network exceptions log name and message with credentials redacted", async () => {
+    clearDiscordApiCache();
     globalThis.fetch = async () => {
       throw new Error(`Injected network failure ${botToken} ${oauthToken}`);
     };
@@ -395,6 +400,7 @@ test("Discord failures log diagnostics without logging bot or OAuth tokens", asy
   });
 
   await t.test("guild-list HTTP failures include status and redact OAuth token", async () => {
+    clearDiscordApiCache();
     globalThis.fetch = async () =>
       jsonResponse({ code: 50301, message: "Discord overloaded" }, 500);
     const { response, logs } = await captureLogs(() => guildsRoute.GET());
@@ -490,6 +496,7 @@ test("every /api/guilds/[guildId] route method enforces the authorization matrix
     for (const [method, module] of Object.entries(route.methods) as Array<[ApiMethod, RouteModule]>) {
       const name = `${method} /api/guilds/[guildId]${route.path}`;
       await t.test(name, async () => {
+        clearDiscordApiCache();
         await withTemporaryDatabase(async (client) => {
           const handler = getHandler(module, method);
           activeSession = { accessToken: "test-only-session-token" };

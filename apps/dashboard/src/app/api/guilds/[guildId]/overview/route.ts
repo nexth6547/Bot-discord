@@ -6,6 +6,7 @@ import {
   internalError,
   logDiscordHttpFailure,
 } from "@/lib/guild-access";
+import { discordApiFetch } from "@/lib/discord-api";
 
 interface DiscordGuildCounts {
   approximate_member_count?: number;
@@ -30,10 +31,10 @@ export async function GET(
       prisma.sanction.count({ where: { guildId: params.guildId } }),
       prisma.ticket.count({ where: { guildId: params.guildId, status: "OPEN" } }),
       prisma.userLevel.count({ where: { guildId: params.guildId } }),
-      fetch(`https://discord.com/api/v10/guilds/${params.guildId}?with_counts=true`, {
+      discordApiFetch(`https://discord.com/api/v10/guilds/${params.guildId}?with_counts=true`, {
         headers: { Authorization: `Bot ${botToken}` },
         cache: "no-store",
-      }),
+      }, { cacheGuildResponse: true }),
     ]);
 
     if (!discordResponse.ok) {

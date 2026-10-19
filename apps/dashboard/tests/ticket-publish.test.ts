@@ -6,6 +6,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { mock, test } from "node:test";
 import { PrismaClient } from "@bot/database";
+import { clearDiscordApiCache } from "../src/lib/discord-api";
 
 const GUILD_ID = "100000000000000001";
 const CHANNEL_ID = "200000000000000001";
@@ -62,6 +63,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 function mockDiscord(): void {
+  clearDiscordApiCache();
   globalThis.fetch = async (input, init) => {
     const url = new URL(String(input));
     const method = init?.method ?? "GET";

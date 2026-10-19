@@ -7,6 +7,24 @@ Statuts utilisés : [Effectué], [Terminé], [En cours], [En attente], [Résolu]
 
 ---
 
+## [1.0.32] - 2026-10-19 - Résilience des appels Discord dashboard
+
+### Ajouté [Effectué]
+- **Dashboard** : module central `discord-api.ts` pour les appels de guildes ciblés, avec deux retries maximum sur 429 selon `Retry-After` plafonné à 2 secondes, déduplication des GET simultanés et cache mémoire de 15 secondes pour les réponses guild channels, roles et métadonnées non propres à l'utilisateur.
+- **Tests dashboard** : couverture de retry 429 puis succès, 429 persistant, statuts 403/404/500, exception réseau, déduplication, expiration du cache et séparation des listes utilisateur selon le jeton OAuth.
+
+### Corrigé [Résolu]
+- **Accès aux guildes** : l'état de présence du bot utilisé comme contrôle d'autorisation n'est pas mis en cache; les échecs API continuent de garder leurs statuts et corps de réponse existants après retries épuisés.
+
+### Modifié [Effectué]
+- **TODO** : ajout du suivi de la centralisation des appels et de l'identification de la cause réelle des 502.
+- **Tests dashboard** : les caches sont réinitialisés dans les fixtures d'intégration qui injectent des états Discord différents, afin de préserver l'isolation de leurs scénarios.
+
+### Notes Techniques
+- Aucun nouveau paquet; utilisateur-listes OAuth non mises en cache et les clés de déduplication incluent les en-têtes d'autorisation. Aucune requête Discord réelle.
+
+---
+
 ## [1.0.31] - 2026-10-16 - Diagnostic des échecs Discord du dashboard
 
 ### Ajouté [Effectué]

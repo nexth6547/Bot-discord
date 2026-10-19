@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@bot/database";
 import { assertDashboardEnvironment, authOptions } from "@/lib/auth";
+import { discordApiFetch } from "@/lib/discord-api";
 
 const ADMINISTRATOR = 1n << 3n;
 const MANAGE_GUILD = 1n << 5n;
@@ -9,7 +10,7 @@ const SNOWFLAKE_PATTERN = /^\d{17,20}$/;
 
 function redactDiagnosticText(value: string, additionalSecrets: string[] = []): string {
   const secrets = [...Object.values(process.env), ...additionalSecrets]
-    .filter((secret): secret is string => typeof secret === "string" && secret.length > 0)
+    .filter((secret): secret is string => typeof secret === "string" && secret.length >= 3)
     .sort((left, right) => right.length - left.length);
 
   return secrets.reduce((text, secret) => text.split(secret).join("[REDACTED]"), value);
@@ -27,7 +28,7 @@ export async function logDiscordHttpFailure(
     if (body && typeof body === "object") {
       const errorBody = body as { code?: unknown; message?: unknown };
       if (typeof errorBody.code === "number") {
-        details.code = errorBody.code;
+        details.code = redactDiagnosticText(String(errorBody.code), additionalSecrets);
       } else if (typeof errorBody.code === "string") {
         details.code = redactDiagnosticText(errorBody.code, additionalSecrets);
       }
@@ -187,7 +188,7 @@ export async function authorizeGuild(guildId: string): Promise<GuildAccess> {
   }
 
   try {
-    const userGuildsResponse = await fetch(
+    const userGuildsResponse = await discordApiFetch(
       "https://discord.com/api/v10/users/@me/guilds",
       {
         headers: { Authorization: `Bearer ${session.accessToken}` },
@@ -226,6 +227,9 @@ export async function authorizeGuild(guildId: string): Promise<GuildAccess> {
     try {
       permissions = BigInt(guild.permissions);
     } catch {
+      console.error("[authorizeGuild] Discord returned invalid guild permissions", {
+        status: userGuildsResponse.status,
+      });
       return {
         ok: false,
         response: NextResponse.json({ error: "DISCORD_UNAVAILABLE" }, { status: 502 }),
@@ -242,7 +246,7 @@ export async function authorizeGuild(guildId: string): Promise<GuildAccess> {
       };
     }
 
-    const botGuildResponse = await fetch(
+    const botGuildResponse = await discordApiFetch(
       `https://discord.com/api/v10/guilds/${guildId}`,
       {
         headers: { Authorization: `Bot ${botToken}` },
@@ -409,19 +413,19 @@ export async function validateGuildReferences(
     const uniqueRoleIds = [...new Set(roleReferences.map(([, id]) => id as string))];
     const [channelsResponse, rolesResponse, memberResponse] = await Promise.all([
       uniqueChannelIds.length
-        ? fetch(`https://discord.com/api/v10/guilds/${guildId}/channels`, {
+        ? discordApiFetch(`https://discord.com/api/v10/guilds/${guildId}/channels`, {
             headers: { Authorization: `Bot ${botToken}` },
             cache: "no-store",
-          })
+          }, { cacheGuildResponse: true })
         : Promise.resolve(null),
       uniqueChannelIds.length || uniqueRoleIds.length
-        ? fetch(`https://discord.com/api/v10/guilds/${guildId}/roles`, {
+        ? discordApiFetch(`https://discord.com/api/v10/guilds/${guildId}/roles`, {
             headers: { Authorization: `Bot ${botToken}` },
             cache: "no-store",
-          })
+          }, { cacheGuildResponse: true })
         : Promise.resolve(null),
       uniqueChannelIds.length || uniqueRoleIds.length
-        ? fetch(`https://discord.com/api/v10/guilds/${guildId}/members/@me`, {
+        ? discordApiFetch(`https://discord.com/api/v10/guilds/${guildId}/members/@me`, {
             headers: { Authorization: `Bot ${botToken}` },
             cache: "no-store",
           })
